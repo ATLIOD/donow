@@ -1,0 +1,17 @@
+<form action="/tasks" method="post" hx-post="/createTask" hx-swap="none">
+    <label for="task-title">Task Title:</label>
+    <input type="text" id="task-title" name="title" placeholder="Enter task title" required>
+
+    <label for="stage">select stage</label>
+    <select id="stage" name="stage">
+        <option value="Todo">To-Do</option>
+        <option value="InProgress">In Progress</option>
+        <option value="Complete">Complete</option>
+    </select> 
+
+    <label for="due-date">Due Date:</label>
+    <input type="date" id="due" name="due">
+
+    <button type="submit">Add Task</button>
+</form>
+<a href="#">Close</a>
