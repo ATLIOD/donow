@@ -1,34 +1,44 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 )
 
-func openDB(dsn string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", dsn)
+func openDB(dsn string) (*pgxpool.Pool, error) {
+	// Parse the connection string into a pgxpool.Config
+	config, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
+		fmt.Printf("Error parsing DSN: %v\n", err)
+		return nil, err
+	}
+
+	config.MaxConns = 2000
+	config.MaxConnIdleTime = 30 * time.Minute
+	config.MinConns = 10
+
+	pool, err := pgxpool.New(context.Background(), dsn)
+	if err != nil {
+		fmt.Printf("Unable to create connection pool: %v\n", err)
 		return nil, err
 	}
 
 	// Test the connection
-	if err = db.Ping(); err != nil {
+	err = pool.Ping(context.Background())
+	if err != nil {
 		return nil, err
 	}
 
-	// Configure the connection pool
-	db.SetMaxOpenConns(2000)                // Maximum open connections
-	db.SetMaxIdleConns(10)                  // Maximum idle connections
-	db.SetConnMaxLifetime(30 * time.Minute) // Maximum connection lifetime
-
-	return db, nil
+	return pool, nil
 }
 
 func main() {
@@ -49,11 +59,11 @@ func main() {
 	)
 
 	// Initialize the database connection pool
-	db, err := openDB(dsn)
+	dbPool, err := openDB(dsn)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer db.Close()
+	defer dbPool.Close()
 
 	// Set up the HTTP server and handlers
 	mux := http.NewServeMux()
@@ -64,15 +74,15 @@ func main() {
 
 	// HTTP handlers
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		tasks(w, r, db)
+		tasks(w, r, dbPool)
 	})
 	mux.HandleFunc("/add-task-form", func(w http.ResponseWriter, r *http.Request) {
-		addTaskForm(w, r, db)
+		addTaskForm(w, r, dbPool)
 	})
 
 	// Start the server
-	log.Println("Starting server on :4000")
-	err = http.ListenAndServe(":4000", mux)
+	log.Println("Starting server on :8080")
+	err = http.ListenAndServe(":8080", mux)
 	if err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}

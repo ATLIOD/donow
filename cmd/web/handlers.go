@@ -1,11 +1,12 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"text/template"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Task struct {
@@ -22,7 +23,7 @@ type PageData struct {
 	Complete   []Task
 }
 
-func tasks(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	tasks := []Task{
 		{ID: 1, Title: "Learn Go Templates", Stage: "Completed"},
 		{ID: 2, Title: "Build Todo App", Stage: "In Progress"},
@@ -60,7 +61,7 @@ func tasks(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 }
 
-func addTaskForm(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func addTaskForm(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles("./ui/html/add-task-form.html")
 	if err != nil {
 		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
