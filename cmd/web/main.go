@@ -77,7 +77,7 @@ func main() {
 		tasks(w, r, dbPool)
 	})
 	mux.HandleFunc("/add-task-form", func(w http.ResponseWriter, r *http.Request) {
-		addTaskForm(w, r, dbPool)
+		addTaskForm(w, r)
 	})
 
 	// Start the server

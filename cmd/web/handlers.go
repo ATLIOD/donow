@@ -1,37 +1,30 @@
 package main
 
 import (
+	"donow/models"
 	"fmt"
 	"net/http"
 	"text/template"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Task struct {
-	ID    int
-	Title string
-	Stage string
-	Due   *time.Time
-}
-
 // PageData struct holds the data passed to the template, including categorized tasks.
 type PageData struct {
-	Todo       []Task
-	InProgress []Task
-	Complete   []Task
+	Todo       []models.Task
+	InProgress []models.Task
+	Complete   []models.Task
 }
 
 func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	tasks := []Task{
+	tasks := []models.Task{
 		{ID: 1, Title: "Learn Go Templates", Stage: "Completed"},
 		{ID: 2, Title: "Build Todo App", Stage: "In Progress"},
 		{ID: 3, Title: "Write tests", Stage: "To Do"},
 	}
 
 	// Categorize tasks by status
-	var toDo, inProgress, completed []Task
+	var toDo, inProgress, completed []models.Task
 	for _, task := range tasks {
 		switch task.Stage {
 		case "To Do":
@@ -61,6 +54,7 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	}
 }
 
+// handler displays template for adding tasks
 func addTaskForm(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles("./ui/html/add-task-form.html")
 	if err != nil {
@@ -73,24 +67,13 @@ func addTaskForm(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handler receieved post methods for adding tasks and parses them to be addedd to the database
 func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		Formtitle := r.FormValue("title")
 		Formstage := r.FormValue("stage")
-		FormdueSTR := r.FormValue("due_date") // Empty string if not provided
-		var Formdue *time.Time
 
-		if FormdueSTR != "" {
-			parsedDate, err := time.Parse("2006-01-02", FormdueSTR)
-			if err != nil {
-				http.Error(w, "Invalid date format", http.StatusBadRequest)
-				return
-			}
-			Formdue = &parsedDate
-		}
-
-		// need to figure out index
-		task := Task{Title: Formtitle, Stage: Formstage, Due: Formdue}
+		task := models.Task{Title: Formtitle, Stage: Formstage}
 
 		// Save the task to the database
 		saveToDatabase(task)

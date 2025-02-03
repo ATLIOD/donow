@@ -1,4 +1,6 @@
 package main
 
-func saveToDatabase(t Task) {
+import "donow/models"
+
+func saveToDatabase(t models.Task) {
 }
