@@ -79,6 +79,15 @@ func main() {
 	mux.HandleFunc("/add-task-form", func(w http.ResponseWriter, r *http.Request) {
 		addTaskForm(w, r)
 	})
+	mux.HandleFunc("/addTask", func(w http.ResponseWriter, r *http.Request) {
+		addTaskHandler(w, r, dbPool)
+	})
+	mux.HandleFunc("/deleteTask/", func(w http.ResponseWriter, r *http.Request) {
+		deleteTaskHandler(w, r, dbPool)
+	})
+	mux.HandleFunc("/updateTask/", func(w http.ResponseWriter, r *http.Request) {
+		updateTaskHandler(w, r, dbPool)
+	})
 
 	// Start the server
 	log.Println("Starting server on :8080")
