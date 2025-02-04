@@ -85,8 +85,8 @@ func main() {
 	mux.HandleFunc("/deleteTask/", func(w http.ResponseWriter, r *http.Request) {
 		deleteTaskHandler(w, r, dbPool)
 	})
-	mux.HandleFunc("/updateTask/", func(w http.ResponseWriter, r *http.Request) {
-		updateTaskHandler(w, r, dbPool)
+	mux.HandleFunc("/moveTask/", func(w http.ResponseWriter, r *http.Request) {
+		moveTaskHandler(w, r, dbPool)
 	})
 
 	// Start the server

@@ -149,7 +149,7 @@ func deleteTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool)
 	}
 }
 
-func updateTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func moveTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	if r.Method != http.MethodPatch {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -173,12 +173,13 @@ func updateTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool)
 		return
 	}
 
-	_, err = db.Exec(context.Background(), "UPDATE tasks SET stage = $1 WHERE id = $2", stage, taskID)
+	err = moveTask(taskID, stage, db)
 	if err != nil {
-		log.Println("Failed to update task:", err)
-		http.Error(w, "Failed to update task", http.StatusInternalServerError)
+		log.Println("error moving task:", err)
+		http.Error(w, "Failed to delete task", http.StatusInternalServerError)
 		return
 	}
+
 	w.Header().Set("HX-Redirect", "/")
 	w.WriteHeader(http.StatusOK)
 }

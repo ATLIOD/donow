@@ -30,3 +30,11 @@ func deleteTask(taskID int, db *pgxpool.Pool) error {
 	}
 	return nil
 }
+
+func moveTask(taskID string, stage string, db *pgxpool.Pool) error {
+	_, err := db.Exec(context.Background(), "UPDATE tasks SET stage = $1 WHERE id = $2", stage, taskID)
+	if err != nil {
+		return err
+	}
+	return nil
+}

@@ -36,7 +36,7 @@
                         <i class="fa fa-trash" style="font-size:24px"></i>
                     </button>
                     
-                    <button hx-patch="/updateTask/{{.ID}}"
+                    <button hx-patch="/moveTask/{{.ID}}"
                             hx-vals='{"stage": "in progress"}'
                             hx-target="closest li"
                             hx-on:htmx:afterRequest="window.location.reload()"
@@ -62,7 +62,7 @@
                         <i class="fa fa-trash" style="font-size:24px"></i>
                     </button>
 
-                    <button hx-patch="/updateTask/{{.ID}}"
+                    <button hx-patch="/moveTask/{{.ID}}"
                             hx-vals='{"stage": "todo"}'
                             hx-target="closest li"
                             hx-on:htmx:afterRequest="window.location.reload()"
@@ -70,7 +70,7 @@
                             <i class="fa fa-arrow-left" style="font-size:24px"></i>
                     </button>
 
-                    <button hx-patch="/updateTask/{{.ID}}"
+                    <button hx-patch="/moveTask/{{.ID}}"
                             hx-vals='{"stage": "done"}'
                             hx-target="closest li"
                             hx-on:htmx:afterRequest="window.location.reload()"
@@ -97,7 +97,7 @@
                         <i class="fa fa-trash" style="font-size:24px"></i>
                     </button>
 
-                    <button hx-patch="/updateTask/{{.ID}}"
+                    <button hx-patch="/moveTask/{{.ID}}"
                             hx-vals='{"stage": "in progress"}'
                             hx-target="closest li"
                             hx-on:htmx:afterRequest="window.location.reload()"
