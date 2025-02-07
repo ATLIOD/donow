@@ -4,6 +4,7 @@ import (
 	"context"
 	"donow/models"
 	"log"
+	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -36,5 +37,9 @@ func moveTask(taskID string, stage string, db *pgxpool.Pool) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func authorize(r *http.Request) error {
 	return nil
 }

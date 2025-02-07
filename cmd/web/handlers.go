@@ -184,6 +184,15 @@ func moveTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+func signUpHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+func logOutHandler(w http.ResponseWriter, r *http.Request) {
+}
+
 func timer(w http.ResponseWriter, r *http.Request) {
 }
 

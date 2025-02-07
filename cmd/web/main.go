@@ -88,6 +88,15 @@ func main() {
 	mux.HandleFunc("/moveTask/", func(w http.ResponseWriter, r *http.Request) {
 		moveTaskHandler(w, r, dbPool)
 	})
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		loginHandler(w, r)
+	})
+	mux.HandleFunc("/signUp", func(w http.ResponseWriter, r *http.Request) {
+		signUpHandler(w, r)
+	})
+	mux.HandleFunc("/logOut", func(w http.ResponseWriter, r *http.Request) {
+		logOutHandler(w, r)
+	})
 
 	// Start the server
 	log.Println("Starting server on :8080")
