@@ -11,6 +11,7 @@ users can add tasks and move them between to-do, in-progress, and complete to tr
 ### Study Timer
 donow features a customizeable study timer 
 users can set intervals for study, short breaks, and long breaks for easy time-blocking
+
 ---
 ## progress
 donow is currently under development
