@@ -1,7 +1,8 @@
 # donow
 ---
-## what is donow  
+## what is dono
 donow is a productivity website geared towards students.
+
 ---
 ## features
 ### Task management
