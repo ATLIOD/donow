@@ -89,10 +89,10 @@ func main() {
 		moveTaskHandler(w, r, dbPool)
 	})
 	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
-		loginHandler(w, r)
+		loginHandler(w, r, dbPool)
 	})
 	mux.HandleFunc("/signUp", func(w http.ResponseWriter, r *http.Request) {
-		signUpHandler(w, r)
+		signUpHandler(w, r, dbPool)
 	})
 	mux.HandleFunc("/logOut", func(w http.ResponseWriter, r *http.Request) {
 		logOutHandler(w, r)

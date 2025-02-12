@@ -41,9 +41,9 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		tasks = append(tasks, t)
 	}
 
-	// debugging
-	println("read done")
-	fmt.Printf("%+v\n", tasks)
+	// // debugging
+	// println("read done")
+	// fmt.Printf("%+v\n", tasks)
 
 	if err = rows.Err(); err != nil {
 		return
@@ -68,10 +68,10 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		}
 	}
 
-	// debugging
-	log.Printf("To Do: %+v\n", toDo)
-	log.Printf("In Progress: %+v\n", inProgress)
-	log.Printf("Completed: %+v\n", completed)
+	// // debugging
+	// log.Printf("To Do: %+v\n", toDo)
+	// log.Printf("In Progress: %+v\n", inProgress)
+	// log.Printf("Completed: %+v\n", completed)
 
 	// Prepare the data for the template
 	data := PageData{
@@ -184,10 +184,47 @@ func moveTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func loginHandler(w http.ResponseWriter, r *http.Request) {
+func loginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	tmpl, err := template.ParseFiles("./ui/html/login-form.html")
+	if err != nil {
+		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// parse template to display tasks
+	err = tmpl.Execute(w, nil)
+	if err != nil {
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+	}
+	if r.Method == http.MethodPost {
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+
+		// Save the task to the database
+		loginUser(username, password, db)
+		fmt.Fprintln(w, "Task added successfully!")
+	}
 }
 
-func signUpHandler(w http.ResponseWriter, r *http.Request) {
+func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	tmpl, err := template.ParseFiles("./ui/html/signup-form.html")
+	if err != nil {
+		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// parse template to display tasks
+	err = tmpl.Execute(w, nil)
+	if err != nil {
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+	}
+	if r.Method == http.MethodPost {
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+		confirmedPassword := r.FormValue("confirm-password")
+
+		// Save the task to the database
+		addUser(username, password, confirmedPassword, db)
+		fmt.Fprintln(w, "Task added successfully!")
+	}
 }
 
 func logOutHandler(w http.ResponseWriter, r *http.Request) {

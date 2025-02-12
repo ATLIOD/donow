@@ -43,3 +43,11 @@ func moveTask(taskID string, stage string, db *pgxpool.Pool) error {
 func authorize(r *http.Request) error {
 	return nil
 }
+
+func addUser(username string, password string, confirmedPassword string, db *pgxpool.Pool) error {
+	return nil
+}
+
+func loginUser(username string, password string, db *pgxpool.Pool) error {
+	return nil
+}
