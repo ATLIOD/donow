@@ -184,7 +184,7 @@ func moveTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func loginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func loginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	tmpl, err := template.ParseFiles("./ui/html/login-form.html")
 	if err != nil {
 		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
@@ -195,14 +195,20 @@ func loginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	if err != nil {
 		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
 	}
-	if r.Method == http.MethodPost {
-		username := r.FormValue("username")
-		password := r.FormValue("password")
+}
 
-		// Save the task to the database
-		loginUser(username, password, db)
-		fmt.Fprintln(w, "Task added successfully!")
+func loginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	if r.Method != http.MethodPost {
+		err := http.StatusMethodNotAllowed
+		http.Error(w, "Invalid request method", err)
+		return
 	}
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+
+	// Save the task to the database
+	loginUser(username, password, db)
+	fmt.Fprintln(w, "Task added successfully!")
 }
 
 func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
@@ -225,6 +231,9 @@ func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		addUser(username, password, confirmedPassword, db)
 		fmt.Fprintln(w, "Task added successfully!")
 	}
+}
+
+func registerUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 }
 
 func logOutHandler(w http.ResponseWriter, r *http.Request) {
