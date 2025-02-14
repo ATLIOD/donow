@@ -203,11 +203,11 @@ func loginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		http.Error(w, "Invalid request method", err)
 		return
 	}
-	username := r.FormValue("username")
+	email := r.FormValue("username")
 	password := r.FormValue("password")
 
 	// Save the task to the database
-	loginUser(username, password, db)
+	loginUser(w, email, password, db)
 	fmt.Fprintln(w, "Task added successfully!")
 }
 
@@ -223,12 +223,12 @@ func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
 	}
 	if r.Method == http.MethodPost {
-		username := r.FormValue("username")
+		email := r.FormValue("username")
 		password := r.FormValue("password")
 		confirmedPassword := r.FormValue("confirm-password")
 
 		// Save the task to the database
-		addUser(username, password, confirmedPassword, db)
+		addUser(email, password, confirmedPassword, db)
 		fmt.Fprintln(w, "Task added successfully!")
 	}
 }

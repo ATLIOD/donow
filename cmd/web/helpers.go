@@ -47,11 +47,43 @@ func authorize(r *http.Request) error {
 	return nil
 }
 
-func addUser(username string, password string, confirmedPassword string, db *pgxpool.Pool) error {
+func addUser(email string, password string, confirmedPassword string, db *pgxpool.Pool) error {
 	return nil
 }
 
-func loginUser(username string, password string, db *pgxpool.Pool) error {
+func loginUser(w http.ResponseWriter, email string, password string, db *pgxpool.Pool) error {
+	stmt := "SELECT password_hash FROM users WHERE email = $1;"
+	row := db.QueryRow(context.Background(), stmt, email)
+	var hash string
+	err := row.Scan(hash)
+	// functionality to search for user in database := user, found
+	if err != nil || checkPasswordHash(password, hash) {
+		log.Println("loging unsuccesful:", err)
+		return err
+	}
+	log.Println("loging succesful")
+
+	sessionToken := generateToken(32)
+	csrfToken := generateToken(32)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    sessionToken,
+		HttpOnly: true,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "csrf_token",
+		Value:    csrfToken,
+		HttpOnly: false,
+	})
+
+	stmt = "INSERT INTO users (sessionToke, csrfToken) VALUES ($1, $2);"
+	_, err = db.Exec(context.Background(), stmt, sessionToken, csrfToken)
+	if err != nil {
+		log.Println("error adding session tokens to database:", err)
+		return err
+	}
+
 	return nil
 }
 
