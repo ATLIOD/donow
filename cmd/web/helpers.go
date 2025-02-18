@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"donow/models"
 	"encoding/base64"
+	"errors"
 	"log"
 	"net/http"
 
@@ -44,6 +45,14 @@ func moveTask(taskID string, stage string, db *pgxpool.Pool) error {
 }
 
 func authorize(r *http.Request) error {
+	st, err := r.Cookie("session_token")
+	if err != nil || st.Value == "" || !tokenExists(st.Value) {
+		return errors.New("Unauthroized")
+	}
+	csrf := r.Header.Get("X-CSRF-Token")
+	if csrf != lookupCSRF(st.Value) || csrf == "" {
+		return errors.New("Unauthroized")
+	}
 	return nil
 }
 
@@ -77,7 +86,7 @@ func loginUser(w http.ResponseWriter, email string, password string, db *pgxpool
 		HttpOnly: false,
 	})
 
-	stmt = "INSERT INTO users (sessionToke, csrfToken) VALUES ($1, $2);"
+	stmt = "INSERT INTO users (sessionToken, csrfToken) VALUES ($1, $2);"
 	_, err = db.Exec(context.Background(), stmt, sessionToken, csrfToken)
 	if err != nil {
 		log.Println("error adding session tokens to database:", err)
@@ -103,4 +112,12 @@ func generateToken(length int) string {
 		log.Fatalf("Failed to generate token: %v", err)
 	}
 	return base64.URLEncoding.EncodeToString(bytes)
+}
+
+func tokenExists(sessionToken string) bool {
+	return false
+}
+
+func lookupCSRF(sessionToken string) string {
+	return ""
 }

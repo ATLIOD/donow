@@ -208,7 +208,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 
 	// Save the task to the database
 	loginUser(w, email, password, db)
-	fmt.Fprintln(w, "Task added successfully!")
 }
 
 func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
@@ -222,6 +221,9 @@ func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	if err != nil {
 		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func registerUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	if r.Method == http.MethodPost {
 		email := r.FormValue("username")
 		password := r.FormValue("password")
@@ -229,11 +231,7 @@ func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 
 		// Save the task to the database
 		addUser(email, password, confirmedPassword, db)
-		fmt.Fprintln(w, "Task added successfully!")
 	}
-}
-
-func registerUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 }
 
 func logOutHandler(w http.ResponseWriter, r *http.Request) {
