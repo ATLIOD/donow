@@ -44,19 +44,34 @@ func moveTask(taskID string, stage string, db *pgxpool.Pool) error {
 	return nil
 }
 
-func authorize(r *http.Request) error {
+func authorize(r *http.Request, db *pgxpool.Pool) error {
 	st, err := r.Cookie("session_token")
-	if err != nil || st.Value == "" || !tokenExists(st.Value) {
+	if err != nil || st.Value == "" || !tokenExists(st.Value, db) {
 		return errors.New("Unauthroized")
 	}
 	csrf := r.Header.Get("X-CSRF-Token")
-	if csrf != lookupCSRF(st.Value) || csrf == "" {
+	if csrf != lookupCSRF(st.Value, db) || csrf == "" {
 		return errors.New("Unauthroized")
 	}
 	return nil
 }
 
 func addUser(email string, password string, confirmedPassword string, db *pgxpool.Pool) error {
+	if password != confirmedPassword {
+		return errors.New("passwords do not match")
+	}
+	passwordHash, err := hashPassword(password)
+	if err != nil {
+		log.Println("error hashing password", err)
+		return err
+	}
+	stmt := "INSERT INTO users (email, password_hash) VALUES ($1, $2);"
+	_, err = db.Exec(context.Background(), stmt, email, passwordHash)
+	if err != nil {
+		log.Println("Error adding User", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -64,7 +79,7 @@ func loginUser(w http.ResponseWriter, email string, password string, db *pgxpool
 	stmt := "SELECT password_hash FROM users WHERE email = $1;"
 	row := db.QueryRow(context.Background(), stmt, email)
 	var hash string
-	err := row.Scan(hash)
+	err := row.Scan(&hash)
 	// functionality to search for user in database := user, found
 	if err != nil || checkPasswordHash(password, hash) {
 		log.Println("loging unsuccesful:", err)
@@ -114,10 +129,18 @@ func generateToken(length int) string {
 	return base64.URLEncoding.EncodeToString(bytes)
 }
 
-func tokenExists(sessionToken string) bool {
-	return false
+func tokenExists(sessionToken string, db *pgxpool.Pool) bool {
+	var count int
+	stmt := "SELECT session_token FROM users WHERE session_token = $1;"
+	err := db.QueryRow(context.Background(), stmt, sessionToken).Scan(&count)
+	return err == nil
 }
 
-func lookupCSRF(sessionToken string) string {
-	return ""
+func lookupCSRF(sessionToken string, db *pgxpool.Pool) string {
+	stmt := "SELECT csrf_token FROM users WHERE session_token = $1;"
+	row := db.QueryRow(context.Background(), stmt, sessionToken)
+	var csrfToken string
+	row.Scan(&csrfToken)
+
+	return csrfToken
 }

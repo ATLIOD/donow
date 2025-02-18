@@ -230,7 +230,19 @@ func registerUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 		confirmedPassword := r.FormValue("confirm-password")
 
 		// Save the task to the database
-		addUser(email, password, confirmedPassword, db)
+		err := addUser(email, password, confirmedPassword, db)
+		if err != nil {
+			tmpl, err := template.ParseFiles("./ui/html/signup-form-error.html")
+			if err != nil {
+				http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			// parse template to display tasks
+			err = tmpl.Execute(w, nil)
+			if err != nil {
+				http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+			}
+		}
 	}
 }
 
