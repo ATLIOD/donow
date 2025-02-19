@@ -85,8 +85,24 @@ func main() {
 	mux.HandleFunc("/deleteTask/", func(w http.ResponseWriter, r *http.Request) {
 		deleteTaskHandler(w, r, dbPool)
 	})
-	mux.HandleFunc("/updateTask/", func(w http.ResponseWriter, r *http.Request) {
-		updateTaskHandler(w, r, dbPool)
+	mux.HandleFunc("/moveTask/", func(w http.ResponseWriter, r *http.Request) {
+		moveTaskHandler(w, r, dbPool)
+	})
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		loginPageHandler(w, r, dbPool)
+	})
+	mux.HandleFunc("/login-submit", func(w http.ResponseWriter, r *http.Request) {
+		loginHandler(w, r, dbPool)
+	})
+	mux.HandleFunc("/signUp", func(w http.ResponseWriter, r *http.Request) {
+		signUpHandler(w, r, dbPool)
+	})
+	mux.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
+		registerUserHandler(w, r, dbPool)
+	})
+
+	mux.HandleFunc("/logOut", func(w http.ResponseWriter, r *http.Request) {
+		logOutHandler(w, r, dbPool)
 	})
 
 	// Start the server
