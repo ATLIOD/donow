@@ -102,7 +102,7 @@ func main() {
 	})
 
 	mux.HandleFunc("/logOut", func(w http.ResponseWriter, r *http.Request) {
-		logOutHandler(w, r)
+		logOutHandler(w, r, dbPool)
 	})
 
 	// Start the server

@@ -14,10 +14,22 @@ import (
 )
 
 func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	ID := "c51cc54d-a264-4007-ba6f-bfa3ad7466e4"
+	st, err := r.Cookie("session_token")
+	if err != nil || st.Value == "" {
+		log.Println("unable to retrieve session token")
+		// return errors.New("unable to retrieve token")
+	}
+
+	// get user id from token
+	userID, err := getUserIDFromToken(st.Value, db)
+	if err != nil {
+		log.Println("error getting user ID from token")
+		// return err
+	}
+
 	stmt := "SELECT id, title, stage FROM tasks WHERE user_id = $1"
 	// rows = result of statement
-	rows, err := db.Query(context.Background(), stmt, ID)
+	rows, err := db.Query(context.Background(), stmt, userID)
 	// if row error
 	if err != nil {
 		log.Println("error querying tasks")
@@ -115,7 +127,7 @@ func addTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		task := models.Task{Title: Formtitle, Stage: Formstage}
 
 		// Save the task to the database
-		saveToDatabase(task, db)
+		saveToDatabase(task, db, r)
 		fmt.Fprintln(w, "Task added successfully!")
 	}
 }
@@ -199,15 +211,33 @@ func loginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) 
 
 func loginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	if r.Method != http.MethodPost {
-		err := http.StatusMethodNotAllowed
-		http.Error(w, "Invalid request method", err)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	email := r.FormValue("username")
+
+	email := r.FormValue("email")
 	password := r.FormValue("password")
 
-	// Save the task to the database
-	loginUser(w, email, password, db)
+	if email == "" || password == "" {
+		http.Error(w, "Missing credentials", http.StatusBadRequest)
+		return
+	}
+
+	err := loginUser(w, email, password, db)
+	if err != nil {
+		log.Printf("Login failed: %v", err)
+		// Don't expose internal errors to the client
+		if err.Error() == "invalid credentials" {
+			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		} else {
+			http.Error(w, "Login failed", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Successful login
+	w.Header().Set("HX-Redirect", "/")
+	w.WriteHeader(http.StatusOK)
 }
 
 func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
@@ -225,7 +255,7 @@ func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 
 func registerUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	if r.Method == http.MethodPost {
-		email := r.FormValue("username")
+		email := r.FormValue("email")
 		password := r.FormValue("password")
 		confirmedPassword := r.FormValue("confirm-password")
 
@@ -246,7 +276,48 @@ func registerUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 	}
 }
 
-func logOutHandler(w http.ResponseWriter, r *http.Request) {
+func logOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	st, err := r.Cookie("session_token")
+	if err != nil || st.Value == "" {
+		log.Println("unable to retrieve session token")
+		// return errors.New("unable to retrieve token")
+	}
+
+	// get user id from token
+	userID, err := getUserIDFromToken(st.Value, db)
+	if err != nil {
+		log.Println("error getting user ID from token")
+		// return err
+	}
+
+	// Set cookies with better security parameters
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    "",
+		HttpOnly: true,
+		//       Secure:   true,        // Only send over HTTPS
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		MaxAge:   3600 * 24, // 24 hours
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "csrf_token",
+		Value:    "",
+		HttpOnly: false, // Needs to be accessible by JavaScript
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		MaxAge:   3600 * 24,
+	})
+	stmt := "UPDATE users SET sessiontoken = $1, csrftoken = $2 WHERE id = $3 RETURNING id;"
+
+	var updatedID string
+	err = db.QueryRow(context.Background(), stmt, "", "", userID).Scan(&updatedID)
+	if err != nil {
+		log.Printf("Failed to delete tokens: %v", err)
+	}
+	log.Println("tokens deleted for user: ", updatedID)
 }
 
 func timer(w http.ResponseWriter, r *http.Request) {
