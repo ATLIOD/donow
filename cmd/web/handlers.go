@@ -14,59 +14,72 @@ import (
 )
 
 func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	st, err := r.Cookie("session_token")
-	if err != nil || st.Value == "" {
-		log.Println("unable to retrieve session token")
-		// return errors.New("unable to retrieve token")
-	}
-
-	// get user id from token
-	userID, err := getUserIDFromToken(st.Value, db)
+	// Parse template early to catch any template errors
+	tmpl, err := template.ParseFiles("./ui/html/tasks.html")
 	if err != nil {
-		log.Println("error getting user ID from token")
-		// return err
+		log.Println("Error loading template:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 
+	// Handle session management
+	var userID string
+
+	if !cookieExists(r, "session_token") {
+		log.Println("No session found, creating temporary user")
+		var tempID string
+		tempID, err = createTemporaryUser(w, db)
+		if err != nil {
+			log.Println("Error creating temporary user:", err)
+			http.Error(w, "Failed to create session", http.StatusInternalServerError)
+			return
+		}
+		userID = tempID
+	} else {
+		// Get session token from cookie
+		st, err := r.Cookie("session_token")
+		if err != nil || st == nil || st.Value == "" {
+			log.Println("Unable to retrieve valid session token:", err)
+			return
+		}
+
+		// Get user ID from token
+		userID, err = getUserIDFromToken(st.Value, db)
+		if err != nil {
+			log.Println("Error getting user ID from token:", err)
+			return
+		}
+	}
+
+	// Fetch tasks for user
 	stmt := "SELECT id, title, stage FROM tasks WHERE user_id = $1"
-	// rows = result of statement
 	rows, err := db.Query(context.Background(), stmt, userID)
-	// if row error
 	if err != nil {
-		log.Println("error querying tasks")
+		log.Println("Error querying tasks:", err)
+		http.Error(w, "Failed to load tasks", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
-	// empty slice of type snippet
+	// Process results
 	tasks := []models.Task{}
-
-	// Next() iterates through elements in a slice
 	for rows.Next() {
-		// empty snippet type
 		t := models.Task{}
-		// same scan as before to put data from row into snippet
 		err = rows.Scan(&t.ID, &t.Title, &t.Stage)
 		if err != nil {
+			log.Println("Error scanning task row:", err)
+			http.Error(w, "Error processing tasks", http.StatusInternalServerError)
 			return
 		}
-		// append snippet to slice
 		tasks = append(tasks, t)
 	}
 
-	// // debugging
-	// println("read done")
-	// fmt.Printf("%+v\n", tasks)
-
 	if err = rows.Err(); err != nil {
+		log.Println("Error after scanning all rows:", err)
+		http.Error(w, "Error processing tasks", http.StatusInternalServerError)
 		return
 	}
 
-	// struct will hold categorized tasks
-	type PageData struct {
-		Todo       []models.Task
-		InProgress []models.Task
-		Complete   []models.Task
-	}
 	// Categorize tasks by status
 	var toDo, inProgress, completed []models.Task
 	for _, task := range tasks {
@@ -80,28 +93,23 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		}
 	}
 
-	// // debugging
-	// log.Printf("To Do: %+v\n", toDo)
-	// log.Printf("In Progress: %+v\n", inProgress)
-	// log.Printf("Completed: %+v\n", completed)
+	type PageData struct {
+		Todo       []models.Task
+		InProgress []models.Task
+		Complete   []models.Task
+	}
 
-	// Prepare the data for the template
+	// Render template with categorized tasks
 	data := PageData{
 		Todo:       toDo,
 		InProgress: inProgress,
 		Complete:   completed,
 	}
 
-	// parse template to display tasks
-	tmpl, err := template.ParseFiles("./ui/html/tasks.html")
-	if err != nil {
-		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	// parse template to display tasks
 	err = tmpl.Execute(w, data)
 	if err != nil {
-		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+		log.Println("Error rendering template:", err)
+		http.Error(w, "Error displaying tasks", http.StatusInternalServerError)
 	}
 }
 

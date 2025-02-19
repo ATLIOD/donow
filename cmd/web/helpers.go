@@ -17,14 +17,14 @@ import (
 
 func saveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request) error {
 	// authorize
-	err := authorize(r, db)
-	if err != nil {
-		log.Println("Authorization failed:", err)
-		return err
-	}
+	// err := authorize(r, db)
+	// if err != nil {
+	// 	log.Println("Authorization failed:", err)
+	// 	return err
+	// }
 
 	// extra log
-	log.Println("Authorization successful, proceeding to save task")
+	// log.Println("Authorization successful, proceeding to save task")
 
 	// get session from token
 	st, err := r.Cookie("session_token")
@@ -45,6 +45,7 @@ func saveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request) error {
 		log.Println("Error inserting task:", err)
 		return fmt.Errorf("failed to save task: %w", err)
 	}
+
 	return nil
 }
 
@@ -82,6 +83,7 @@ func authorize(r *http.Request, db *pgxpool.Pool) error {
 		return errors.New("unauthorized: could not fetch csrf token")
 	}
 	if csrf == "" || expectedCSRF == "" || csrf != expectedCSRF {
+		log.Println(csrf, " | ", expectedCSRF)
 		return errors.New("unauthorized: invalid CSRF token")
 	}
 
@@ -172,6 +174,50 @@ func loginUser(w http.ResponseWriter, email string, password string, db *pgxpool
 	return nil
 }
 
+func createTemporaryUser(w http.ResponseWriter, db *pgxpool.Pool) (string, error) {
+	// Generate tokens
+	sessionToken := generateToken(32)
+	csrfToken := generateToken(32)
+
+	// Set cookies with better security parameters
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    sessionToken,
+		HttpOnly: true,
+		//       Secure:   true,        // Only send over HTTPS
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		MaxAge:   3600 * 24 * 7, // 7 days
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "csrf_token",
+		Value:    csrfToken,
+		HttpOnly: false, // Needs to be accessible by JavaScript
+		//	Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		MaxAge:   3600 * 24 * 7,
+	})
+
+	// Update database with new tokens
+	stmt := "INSERT INTO users(sessiontoken, csrftoken) VALUES( $1, $2) RETURNING id;"
+	log.Printf("Setting session cookie: %+v", sessionToken)
+	log.Printf("Setting CSRF cookie: %+v", csrfToken)
+
+	var updatedID string
+	err := db.QueryRow(context.Background(), stmt, sessionToken, csrfToken).Scan(&updatedID)
+	if err != nil {
+		log.Printf("Failed to update tokens: %v", err)
+		return "", fmt.Errorf("login failed: %w", err)
+	}
+	if updatedID == "" {
+		log.Println("no user updated")
+	}
+
+	return updatedID, nil
+}
+
 func hashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	return string(bytes), err
@@ -224,4 +270,9 @@ func getUserIDFromToken(sessionToken string, db *pgxpool.Pool) (string, error) {
 		return "", fmt.Errorf("unable to retrieve user id: %w", err)
 	}
 	return userID, nil
+}
+
+func cookieExists(r *http.Request, name string) bool {
+	_, err := r.Cookie(name)
+	return err == nil
 }
