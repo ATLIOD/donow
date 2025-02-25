@@ -17,14 +17,14 @@ import (
 
 func saveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request) error {
 	// authorize
-	// err := authorize(r, db)
-	// if err != nil {
-	// 	log.Println("Authorization failed:", err)
-	// 	return err
-	// }
+	err := authorize(r, db)
+	if err != nil {
+		log.Println("Authorization failed:", err)
+		return err
+	}
 
 	// extra log
-	// log.Println("Authorization successful, proceeding to save task")
+	log.Println("Authorization successful, proceeding to save task")
 
 	// get session from token
 	st, err := r.Cookie("session_token")

@@ -6,6 +6,9 @@
   <link rel="stylesheet" href="/static/css/base.css">
   <script src="https://unpkg.com/htmx.org"></script>
   <title>do now</title>
+  <meta name="csrf-token" content="{{ .CSRFtoken }}">
+  <script src="/static/csrf.js" defer></script>
+
 </head>
 
 <body>

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"text/template"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -50,9 +51,19 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 			return
 		}
 	}
+	stmt := "SELECT csrftoken FROM users WHERE id = $1;"
+	row := db.QueryRow(context.Background(), stmt, userID)
+	var csrfToken string
+	err = row.Scan(&csrfToken)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			log.Println("no user found with this csrf token")
+		}
+		log.Println("unable to retrieve csrf token: %w", err)
+	}
 
 	// Fetch tasks for user
-	stmt := "SELECT id, title, stage FROM tasks WHERE user_id = $1"
+	stmt = "SELECT id, title, stage FROM tasks WHERE user_id = $1"
 	rows, err := db.Query(context.Background(), stmt, userID)
 	if err != nil {
 		log.Println("Error querying tasks:", err)
@@ -97,6 +108,7 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		Todo       []models.Task
 		InProgress []models.Task
 		Complete   []models.Task
+		CSRFtoken  string
 	}
 
 	// Render template with categorized tasks
@@ -104,6 +116,7 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		Todo:       toDo,
 		InProgress: inProgress,
 		Complete:   completed,
+		CSRFtoken:  csrfToken,
 	}
 
 	err = tmpl.Execute(w, data)

@@ -1,6 +1,9 @@
 <form hx-post="/addTask" 
     hx-swap="none" 
-    hx-on::after-request="window.location.href = '/'">>
+    hx-on::after-request="window.location.href = '/'">
+    <meta name="csrf-token" content="{{ .CSRFtoken }}">
+    <script src="/static/js/csrf.js" defer></script>
+
 
     <label for="task-title">Task Title:</label>
     <input type="text" id="task-title" name="title" placeholder="Enter task title" required>
