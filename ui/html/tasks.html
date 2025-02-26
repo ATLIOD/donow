@@ -6,6 +6,9 @@
   <link rel="stylesheet" href="/static/css/base.css">
   <script src="https://unpkg.com/htmx.org"></script>
   <title>do now</title>
+  <meta name="csrf-token" content="{{ .CSRFtoken }}">
+  <script src="/static/js/csrf.js" defer></script>
+
 </head>
 
 <body>
@@ -14,11 +17,17 @@
       <a href="/"><b>do now</b></a>
      </div>
     <div class="links">
-      <a class="active" href="#tasks"><i class="fa fa-tasks" style="font-size:24px"></i></a>
+      <a class="active" href="/"><i class="fa fa-tasks" style="font-size:24px"></i></a>
       <a href="#timer"><i class="fa fa-clock-o" style="font-size:24px"></i></a>
       <a href="#account"><i class="fa fa-user" style="font-size:24px"></i></a>
       <a href="#settings"><i class="fa fa-gear" style="font-size:24px"></i></a>
+    {{if not .IsLoggedIn}}
       <a href="login"><i class="fa fa-sign-in" style="font-size:24px"></i></a>
+    {{end}}
+    {{if .IsLoggedIn}}
+      <a href="logOut"><i class="fa fa-sign-out" style="font-size:24px"></i></a>
+    {{end}}
+
 
     </div>
   </div>

@@ -1,6 +1,6 @@
 # donow
 ---
-## what is dono
+## what is donow
 donow is a productivity website geared towards students.
 
 ---

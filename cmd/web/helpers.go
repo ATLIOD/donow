@@ -10,7 +10,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -45,6 +45,7 @@ func saveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request) error {
 		log.Println("Error inserting task:", err)
 		return fmt.Errorf("failed to save task: %w", err)
 	}
+
 	return nil
 }
 
@@ -77,18 +78,19 @@ func authorize(r *http.Request, db *pgxpool.Pool) error {
 	}
 
 	csrf := r.Header.Get("X-CSRF-Token")
-	expectedCSRF, err := lookupCSRF(st.Value, db)
+	expectedCSRF, err := getCSRFFromST(st.Value, db)
 	if err != nil {
 		return errors.New("unauthorized: could not fetch csrf token")
 	}
 	if csrf == "" || expectedCSRF == "" || csrf != expectedCSRF {
+		log.Println(csrf, " | ", expectedCSRF)
 		return errors.New("unauthorized: invalid CSRF token")
 	}
 
 	return nil
 }
 
-func addUser(email string, password string, confirmedPassword string, db *pgxpool.Pool) error {
+func addUser(email string, password string, confirmedPassword string, db *pgxpool.Pool, r *http.Request) error {
 	if password != confirmedPassword {
 		return errors.New("passwords do not match")
 	}
@@ -97,11 +99,43 @@ func addUser(email string, password string, confirmedPassword string, db *pgxpoo
 		log.Println("error hashing password", err)
 		return err
 	}
-	stmt := "INSERT INTO users (email, password_hash) VALUES ($1, $2);"
-	_, err = db.Exec(context.Background(), stmt, email, passwordHash)
-	if err != nil {
-		log.Println("Error adding User", err)
-		return err
+
+	if !cookieExists(r, "session_token") {
+		stmt := "INSERT INTO users (email, password_hash) VALUES ($1, $2);"
+		_, err = db.Exec(context.Background(), stmt, email, passwordHash)
+		if err != nil {
+			log.Println("Error adding User", err)
+			return err
+		}
+	} else {
+		// get session from token
+		st, err := r.Cookie("session_token")
+		if err != nil || st.Value == "" {
+			return errors.New("unable to retrieve token")
+		}
+		// authroize token and sessions and csrf token
+		err = authorize(r, db)
+		if err != nil {
+			log.Println("Authorization failed:", err)
+			return err
+		}
+		exists, err := accountExists(r, db)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		if !exists {
+			// upgrade users temporary account into a permanent account
+			stmt := "UPDATE users SET email = $1, password_hash = $2 WHERE sessiontoken = $3;"
+			_, err = db.Exec(context.Background(), stmt, email, passwordHash, st.Value)
+			if err != nil {
+				log.Println("Error adding User", err)
+				return err
+
+			}
+		} else {
+			log.Println("that accoutn has already been created")
+		}
 	}
 
 	return nil
@@ -172,6 +206,50 @@ func loginUser(w http.ResponseWriter, email string, password string, db *pgxpool
 	return nil
 }
 
+func createTemporaryUser(w http.ResponseWriter, db *pgxpool.Pool) (string, error) {
+	// Generate tokens
+	sessionToken := generateToken(32)
+	csrfToken := generateToken(32)
+
+	// Set cookies with better security parameters
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    sessionToken,
+		HttpOnly: true,
+		//       Secure:   true,        // Only send over HTTPS
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		MaxAge:   3600 * 24 * 7, // 7 days
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "csrf_token",
+		Value:    csrfToken,
+		HttpOnly: false, // Needs to be accessible by JavaScript
+		//	Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		MaxAge:   3600 * 24 * 7,
+	})
+
+	// Update database with new tokens
+	stmt := "INSERT INTO users(sessiontoken, csrftoken) VALUES( $1, $2) RETURNING id;"
+	log.Printf("Setting session cookie: %+v", sessionToken)
+	log.Printf("Setting CSRF cookie: %+v", csrfToken)
+
+	var updatedID string
+	err := db.QueryRow(context.Background(), stmt, sessionToken, csrfToken).Scan(&updatedID)
+	if err != nil {
+		log.Printf("Failed to update tokens: %v", err)
+		return "", fmt.Errorf("login failed: %w", err)
+	}
+	if updatedID == "" {
+		log.Println("no user updated")
+	}
+
+	return updatedID, nil
+}
+
 func hashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	return string(bytes), err
@@ -197,16 +275,16 @@ func tokenExists(sessionToken string, db *pgxpool.Pool) bool {
 	return err == nil
 }
 
-func lookupCSRF(sessionToken string, db *pgxpool.Pool) (string, error) {
+func getCSRFFromST(sessionToken string, db *pgxpool.Pool) (string, error) {
 	stmt := "SELECT csrftoken FROM users WHERE sessiontoken = $1;"
 	row := db.QueryRow(context.Background(), stmt, sessionToken)
 	var csrfToken string
 	err := row.Scan(&csrfToken)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return "", errors.New("no user found with this csrf token")
+			return "", errors.New("no user found with this session token")
 		}
-		return "", fmt.Errorf("unable to retrieve csrf token: %w", err)
+		return "", fmt.Errorf("unable to retrieve csrf token from ST: %w", err)
 	}
 
 	return csrfToken, err
@@ -221,7 +299,64 @@ func getUserIDFromToken(sessionToken string, db *pgxpool.Pool) (string, error) {
 		if err == pgx.ErrNoRows {
 			return "", errors.New("no user found with this session token")
 		}
-		return "", fmt.Errorf("unable to retrieve user id: %w", err)
+		return "", fmt.Errorf("no user id found: %w", err)
 	}
 	return userID, nil
+}
+
+func cookieExists(r *http.Request, name string) bool {
+	st, err := r.Cookie(name)
+	return err == nil && st.Value != ""
+}
+
+func getCRSFFromID(userID string, db *pgxpool.Pool) (string, error) {
+	stmt := "SELECT csrftoken FROM users WHERE id = $1;"
+	row := db.QueryRow(context.Background(), stmt, userID)
+	var csrfToken string
+	err := row.Scan(&csrfToken)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return "", errors.New("no user found with this id")
+		}
+		return "", fmt.Errorf("unable to retrieve csrf token from id: %w", err)
+	}
+
+	return csrfToken, err
+}
+
+func isLoggedIn(r *http.Request, db *pgxpool.Pool) (bool, error) {
+	// get session from token
+	st, err := r.Cookie("session_token")
+	if err != nil && err != http.ErrNoCookie {
+		return false, errors.New("unable to retrieve token")
+	} else if err == http.ErrNoCookie {
+		return false, nil
+	}
+	// get user id if token exists
+	userID, err := getUserIDFromToken(st.Value, db)
+	if err != nil {
+		return false, fmt.Errorf("error retrieving id: %w", err)
+	}
+	return userID != "", nil
+}
+
+func accountExists(r *http.Request, db *pgxpool.Pool) (bool, error) {
+	// get session from token
+	st, err := r.Cookie("session_token")
+	if err != nil {
+		return false, errors.New("unable to retrieve token")
+	} else if err == http.ErrNoCookie {
+		return false, errors.New("no cookie")
+	}
+	var email bool
+	getEmailstmt := "SELECT is_temporary FROM users WHERE sessiontoken = $1;"
+	row := db.QueryRow(context.Background(), getEmailstmt, st.Value)
+	err = row.Scan(&email)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return false, errors.New("no user found with this session token")
+		}
+		return false, fmt.Errorf("no user token found: %w", err)
+	}
+	return !email, nil
 }
