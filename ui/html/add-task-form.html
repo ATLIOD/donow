@@ -1,3 +1,7 @@
+<head>
+  <meta name="csrf-token" content="{{ .CSRFtoken }}">
+  <script src="/static/csrf.js" defer></script>
+</head>
 <form hx-post="/addTask" 
     hx-swap="none" 
     hx-on::after-request="window.location.href = '/'">

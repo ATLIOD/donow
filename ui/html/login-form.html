@@ -6,6 +6,9 @@
   <link rel="stylesheet" href="/static/css/base.css">
   <script src="https://unpkg.com/htmx.org"></script>
   <title>do now</title>
+  <meta name="csrf-token" content="{{ .CSRFtoken }}">
+  <script src="/static/js/csrf.js" defer></script>
+
 </head>
 
 <body>
@@ -14,18 +17,19 @@
       <a href="/"><b>do now</b></a>
      </div>
     <div class="links">
-      <a class="active" href="#tasks"><i class="fa fa-tasks" style="font-size:24px"></i></a>
+      <a class="active" href="/"><i class="fa fa-tasks" style="font-size:24px"></i></a>
       <a href="#timer"><i class="fa fa-clock-o" style="font-size:24px"></i></a>
       <a href="#account"><i class="fa fa-user" style="font-size:24px"></i></a>
       <a href="#settings"><i class="fa fa-gear" style="font-size:24px"></i></a>
-      <a href="login"><i class="fa fa-sign-in" style="font-size:24px"></i></a>
 
     </div>
   </div>
 <div class="main">
     <form hx-post="/login-submit" 
         hx-swap="none" 
-        hx-on::after-request="window.location.href = '/'">>
+        hx-on::after-request="window.location.href = '/'">
+
+        <input type="hidden" name="csrf-token" id="csrf-token">
 
         <label for="email">Email:</label>
         <input type="text" id="email" name="email" placeholder="Enter your email" required>
@@ -36,5 +40,10 @@
 
         <button type="submit">log in</button>
     </form>
-    <a href="#">Close</a>
 </div>
+<div>
+    <a href="signUp"><i style="font-size:24px;color:blue;"></i>no account? register here </a>
+</div>
+
+
+</body>
