@@ -9,6 +9,7 @@ import (
 	"path"
 	"strconv"
 	"text/template"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -388,6 +389,8 @@ func registerUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 }
 
 func logOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	st, err := r.Cookie("session_token")
 	if err != nil {
 		log.Println("unable to retrieve session token")
@@ -425,7 +428,7 @@ func logOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		stmt := "UPDATE users SET sessiontoken = $1, csrftoken = $2 WHERE id = $3 RETURNING id;"
 
 		var updatedID string
-		err = db.QueryRow(context.Background(), stmt, "", "", userID).Scan(&updatedID)
+		err = db.QueryRow(ctx, stmt, "", "", userID).Scan(&updatedID)
 		if err != nil {
 			log.Printf("Failed to delete tokens: %v", err)
 		}

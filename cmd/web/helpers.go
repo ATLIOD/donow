@@ -9,6 +9,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/mail"
+	"regexp"
+	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -40,7 +44,9 @@ func saveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request) error {
 
 	// functionality to search for user in database := user, found
 	stmt := "INSERT INTO tasks (user_id, title, stage) VALUES ($1, $2, $3);"
-	_, err = db.Exec(context.Background(), stmt, userID, t.Title, t.Stage)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_, err = db.Exec(ctx, stmt, userID, t.Title, t.Stage)
 	if err != nil {
 		log.Println("Error inserting task:", err)
 		return fmt.Errorf("failed to save task: %w", err)
@@ -50,8 +56,11 @@ func saveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request) error {
 }
 
 func deleteTask(taskID int, db *pgxpool.Pool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	stmt := "DELETE FROM tasks WHERE id = $1;"
-	_, err := db.Exec(context.Background(), stmt, taskID)
+	_, err := db.Exec(ctx, stmt, taskID)
 	if err != nil {
 		log.Println("Failed to delete task:", err)
 		return err
@@ -60,7 +69,10 @@ func deleteTask(taskID int, db *pgxpool.Pool) error {
 }
 
 func moveTask(taskID string, stage string, db *pgxpool.Pool) error {
-	_, err := db.Exec(context.Background(), "UPDATE tasks SET stage = $1 WHERE id = $2", stage, taskID)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	_, err := db.Exec(ctx, "UPDATE tasks SET stage = $1 WHERE id = $2", stage, taskID)
 	if err != nil {
 		return err
 	}
@@ -99,10 +111,12 @@ func addUser(email string, password string, confirmedPassword string, db *pgxpoo
 		log.Println("error hashing password", err)
 		return err
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	if !cookieExists(r, "session_token") {
 		stmt := "INSERT INTO users (email, password_hash) VALUES ($1, $2);"
-		_, err = db.Exec(context.Background(), stmt, email, passwordHash)
+		_, err = db.Exec(ctx, stmt, email, passwordHash)
 		if err != nil {
 			log.Println("Error adding User", err)
 			return err
@@ -127,7 +141,7 @@ func addUser(email string, password string, confirmedPassword string, db *pgxpoo
 		if !exists {
 			// upgrade users temporary account into a permanent account
 			stmt := "UPDATE users SET email = $1, password_hash = $2 WHERE sessiontoken = $3;"
-			_, err = db.Exec(context.Background(), stmt, email, passwordHash, st.Value)
+			_, err = db.Exec(ctx, stmt, email, passwordHash, st.Value)
 			if err != nil {
 				log.Println("Error adding User", err)
 				return err
@@ -145,9 +159,12 @@ func loginUser(w http.ResponseWriter, email string, password string, db *pgxpool
 	// Add logging for debugging
 	log.Printf("Login attempt for email: %s", email)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	// Get user's password hash
 	stmt := "SELECT id, password_hash FROM users WHERE email = $1;"
-	row := db.QueryRow(context.Background(), stmt, email)
+	row := db.QueryRow(ctx, stmt, email)
 	var (
 		userID string
 		hash   string
@@ -192,7 +209,7 @@ func loginUser(w http.ResponseWriter, email string, password string, db *pgxpool
 	stmt = "UPDATE users SET sessiontoken = $1, csrftoken = $2 WHERE email = $3 RETURNING id;"
 
 	var updatedID string
-	err := db.QueryRow(context.Background(), stmt, sessionToken, csrfToken, email).Scan(&updatedID)
+	err := db.QueryRow(ctx, stmt, sessionToken, csrfToken, email).Scan(&updatedID)
 	if err != nil {
 		log.Printf("Failed to update tokens: %v", err)
 		return fmt.Errorf("login failed: %w", err)
@@ -232,13 +249,16 @@ func createTemporaryUser(w http.ResponseWriter, db *pgxpool.Pool) (string, error
 		MaxAge:   3600 * 24 * 7,
 	})
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	// Update database with new tokens
 	stmt := "INSERT INTO users(sessiontoken, csrftoken) VALUES( $1, $2) RETURNING id;"
 	log.Printf("Setting session cookie: %+v", sessionToken)
 	log.Printf("Setting CSRF cookie: %+v", csrfToken)
 
 	var updatedID string
-	err := db.QueryRow(context.Background(), stmt, sessionToken, csrfToken).Scan(&updatedID)
+	err := db.QueryRow(ctx, stmt, sessionToken, csrfToken).Scan(&updatedID)
 	if err != nil {
 		log.Printf("Failed to update tokens: %v", err)
 		return "", fmt.Errorf("login failed: %w", err)
@@ -269,15 +289,20 @@ func generateToken(length int) string {
 }
 
 func tokenExists(sessionToken string, db *pgxpool.Pool) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	var token string
 	stmt := "SELECT sessiontoken FROM users WHERE sessiontoken = $1;"
-	err := db.QueryRow(context.Background(), stmt, sessionToken).Scan(&token)
+	err := db.QueryRow(ctx, stmt, sessionToken).Scan(&token)
 	return err == nil
 }
 
 func getCSRFFromST(sessionToken string, db *pgxpool.Pool) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	stmt := "SELECT csrftoken FROM users WHERE sessiontoken = $1;"
-	row := db.QueryRow(context.Background(), stmt, sessionToken)
+	row := db.QueryRow(ctx, stmt, sessionToken)
 	var csrfToken string
 	err := row.Scan(&csrfToken)
 	if err != nil {
@@ -291,9 +316,11 @@ func getCSRFFromST(sessionToken string, db *pgxpool.Pool) (string, error) {
 }
 
 func getUserIDFromToken(sessionToken string, db *pgxpool.Pool) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	var userID string
 	getUserIDstmt := "SELECT id FROM users WHERE sessiontoken = $1;"
-	row := db.QueryRow(context.Background(), getUserIDstmt, sessionToken)
+	row := db.QueryRow(ctx, getUserIDstmt, sessionToken)
 	err := row.Scan(&userID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -310,8 +337,10 @@ func cookieExists(r *http.Request, name string) bool {
 }
 
 func getCRSFFromID(userID string, db *pgxpool.Pool) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	stmt := "SELECT csrftoken FROM users WHERE id = $1;"
-	row := db.QueryRow(context.Background(), stmt, userID)
+	row := db.QueryRow(ctx, stmt, userID)
 	var csrfToken string
 	err := row.Scan(&csrfToken)
 	if err != nil {
@@ -341,6 +370,8 @@ func isLoggedIn(r *http.Request, db *pgxpool.Pool) (bool, error) {
 }
 
 func accountExists(r *http.Request, db *pgxpool.Pool) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	// get session from token
 	st, err := r.Cookie("session_token")
 	if err != nil {
@@ -350,7 +381,7 @@ func accountExists(r *http.Request, db *pgxpool.Pool) (bool, error) {
 	}
 	var email bool
 	getEmailstmt := "SELECT is_temporary FROM users WHERE sessiontoken = $1;"
-	row := db.QueryRow(context.Background(), getEmailstmt, st.Value)
+	row := db.QueryRow(ctx, getEmailstmt, st.Value)
 	err = row.Scan(&email)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -359,4 +390,48 @@ func accountExists(r *http.Request, db *pgxpool.Pool) (bool, error) {
 		return false, fmt.Errorf("no user token found: %w", err)
 	}
 	return !email, nil
+}
+
+func ValidateEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
+}
+
+func validatePassword(password string) error {
+	// Ensure password length is at least 8 characters
+	if len(password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters long")
+	}
+
+	// Regex patterns for validation
+	uppercase := regexp.MustCompile(`[A-Z]`)
+	lowercase := regexp.MustCompile(`[a-z]`)
+	digit := regexp.MustCompile(`\d`)
+	specialChar := regexp.MustCompile(`[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]`)
+
+	// Check if password meets all conditions
+	if !uppercase.MatchString(password) {
+		return fmt.Errorf("password must contain at least one uppercase letter")
+	}
+	if !lowercase.MatchString(password) {
+		return fmt.Errorf("password must contain at least one lowercase letter")
+	}
+	if !digit.MatchString(password) {
+		return fmt.Errorf("password must contain at least one digit")
+	}
+	if !specialChar.MatchString(password) {
+		return fmt.Errorf("password must contain at least one special character")
+	}
+
+	return nil
+}
+
+func ValidateTaskInput(title string) error {
+	if len(title) == 0 || len(title) > 255 {
+		return errors.New("title must be between 1 and 255 characters")
+	}
+	if strings.ContainsAny(title, "<>\"'") {
+		return errors.New("title contains invalid characters")
+	}
+	return nil
 }
