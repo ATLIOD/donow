@@ -42,6 +42,12 @@ func saveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request) error {
 		return err
 	}
 
+	err = ValidateTaskInput(t.Title)
+	if err != nil {
+		log.Println("error with task title ", err)
+		return err
+	}
+
 	// functionality to search for user in database := user, found
 	stmt := "INSERT INTO tasks (user_id, title, stage) VALUES ($1, $2, $3);"
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -106,6 +112,11 @@ func addUser(email string, password string, confirmedPassword string, db *pgxpoo
 	if password != confirmedPassword {
 		return errors.New("passwords do not match")
 	}
+	err := validatePassword(password)
+	if err != nil {
+		log.Println("error with password ", err)
+		return err
+	}
 	passwordHash, err := hashPassword(password)
 	if err != nil {
 		log.Println("error hashing password", err)
@@ -115,6 +126,11 @@ func addUser(email string, password string, confirmedPassword string, db *pgxpoo
 	defer cancel()
 
 	if !cookieExists(r, "session_token") {
+		err := validateEmail(email)
+		if err != nil {
+			log.Println("error with email ", err)
+			return err
+		}
 		stmt := "INSERT INTO users (email, password_hash) VALUES ($1, $2);"
 		_, err = db.Exec(ctx, stmt, email, passwordHash)
 		if err != nil {
@@ -392,9 +408,10 @@ func accountExists(r *http.Request, db *pgxpool.Pool) (bool, error) {
 	return !email, nil
 }
 
-func ValidateEmail(email string) bool {
+func validateEmail(email string) error {
 	_, err := mail.ParseAddress(email)
-	return err == nil
+
+	return err
 }
 
 func validatePassword(password string) error {
