@@ -9,6 +9,7 @@ import (
 	"path"
 	"strconv"
 	"text/template"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -149,11 +150,20 @@ func addTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	if r.Method == http.MethodPost {
 		Formtitle := r.FormValue("title")
 		Formstage := r.FormValue("stage")
-
 		task := models.Task{Title: Formtitle, Stage: Formstage}
+		err := validateTaskInput(task.Title)
+		if err != nil {
+			log.Println("error with task title ", err)
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, "task title must be between 1-255 characters and cannot contain <>\"'")
+			return
+		}
 
 		// Save the task to the database
 		saveToDatabase(task, db, r)
+
+		w.Header().Set("HX-Redirect", "/")
+		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "Task added successfully!")
 	}
 }
@@ -304,7 +314,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	}
 
 	// Successful login
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
@@ -368,26 +378,58 @@ func registerUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 		password := r.FormValue("password")
 		confirmedPassword := r.FormValue("confirm-password")
 
-		// Save the task to the database
-		err := addUser(email, password, confirmedPassword, db, r)
+		err := validateEmail(email)
 		if err != nil {
-			tmpl, err := template.ParseFiles("./ui/html/signup-form-error.html")
-			if err != nil {
-				http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
-			// parse template to display tasks
-			err = tmpl.Execute(w, nil)
-			if err != nil {
-				http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
-			}
+			log.Println("invalid email: ", err)
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, "invalid email address")
+			return
+		}
+		err = validatePassword(password)
+		if err != nil {
+			log.Println("invalid password: ", err)
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, "Passwords must be at least 8 characters in length and contain: one uppercase letter, one lowercase letter, one special character, one digit")
+			return
+		}
+		if password != confirmedPassword {
+			log.Println("passwords must match: ", err)
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, "passwords must match")
+			return
 		}
 
+		inUse, err := emailInUse(email, db)
+		if err != nil {
+			log.Printf("Error checking email: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if inUse {
+			// Email already in use
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Email address is already registered")
+			return
+		}
+		// Save the task to the database
+		err = addUser(email, password, confirmedPassword, db, r)
+		if err != nil {
+			log.Println("add user error ", err)
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, "error creating account. please contact admin.")
+			return
+
+		}
+
+		w.WriteHeader(http.StatusOK)
 		w.Header().Set("HX-Redirect", "/logOutHandler")
 	}
 }
 
 func logOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	st, err := r.Cookie("session_token")
 	if err != nil {
 		log.Println("unable to retrieve session token")
@@ -425,7 +467,7 @@ func logOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		stmt := "UPDATE users SET sessiontoken = $1, csrftoken = $2 WHERE id = $3 RETURNING id;"
 
 		var updatedID string
-		err = db.QueryRow(context.Background(), stmt, "", "", userID).Scan(&updatedID)
+		err = db.QueryRow(ctx, stmt, "", "", userID).Scan(&updatedID)
 		if err != nil {
 			log.Printf("Failed to delete tokens: %v", err)
 		}
