@@ -42,12 +42,6 @@ func saveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request) error {
 		return err
 	}
 
-	err = ValidateTaskInput(t.Title)
-	if err != nil {
-		log.Println("error with task title ", err)
-		return err
-	}
-
 	// functionality to search for user in database := user, found
 	stmt := "INSERT INTO tasks (user_id, title, stage) VALUES ($1, $2, $3);"
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -109,14 +103,6 @@ func authorize(r *http.Request, db *pgxpool.Pool) error {
 }
 
 func addUser(email string, password string, confirmedPassword string, db *pgxpool.Pool, r *http.Request) error {
-	if password != confirmedPassword {
-		return errors.New("passwords do not match")
-	}
-	err := validatePassword(password)
-	if err != nil {
-		log.Println("error with password ", err)
-		return err
-	}
 	passwordHash, err := hashPassword(password)
 	if err != nil {
 		log.Println("error hashing password", err)
@@ -126,11 +112,6 @@ func addUser(email string, password string, confirmedPassword string, db *pgxpoo
 	defer cancel()
 
 	if !cookieExists(r, "session_token") {
-		err := validateEmail(email)
-		if err != nil {
-			log.Println("error with email ", err)
-			return err
-		}
 		stmt := "INSERT INTO users (email, password_hash) VALUES ($1, $2);"
 		_, err = db.Exec(ctx, stmt, email, passwordHash)
 		if err != nil {
@@ -164,7 +145,7 @@ func addUser(email string, password string, confirmedPassword string, db *pgxpoo
 
 			}
 		} else {
-			log.Println("that accoutn has already been created")
+			log.Println("that account has already been created")
 		}
 	}
 
@@ -443,7 +424,7 @@ func validatePassword(password string) error {
 	return nil
 }
 
-func ValidateTaskInput(title string) error {
+func validateTaskInput(title string) error {
 	if len(title) == 0 || len(title) > 255 {
 		return errors.New("title must be between 1 and 255 characters")
 	}
@@ -451,4 +432,21 @@ func ValidateTaskInput(title string) error {
 		return errors.New("title contains invalid characters")
 	}
 	return nil
+}
+
+func emailInUse(email string, db *pgxpool.Pool) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	stmt := "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)"
+
+	var exists bool
+
+	// Execute the query with the email parameter
+	err := db.QueryRow(ctx, stmt, email).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("database error checking email: %w", err)
+	}
+
+	return exists, nil
 }
