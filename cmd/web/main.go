@@ -100,7 +100,6 @@ func main() {
 	mux.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
 		registerUserHandler(w, r, dbPool)
 	})
-
 	mux.HandleFunc("/logOut", func(w http.ResponseWriter, r *http.Request) {
 		logOutHandler(w, r, dbPool)
 	})

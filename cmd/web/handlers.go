@@ -103,7 +103,7 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		}
 	}
 
-	loggedIN, err := isLoggedIn(r, db)
+	loggedIN, err := accountExists(r, db)
 	if err != nil {
 		fmt.Println("error checking if logged in: ", err)
 	}
@@ -303,18 +303,25 @@ func loginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 
 	err := loginUser(w, email, password, db)
 	if err != nil {
-		log.Printf("Login failed: %v", err)
-		// Don't expose internal errors to the client
+		log.Println("Login failed: ", err)
 		if err.Error() == "invalid credentials" {
-			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+			log.Println("Invalid email or password")
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, "invalid email or password")
+			return
+
 		} else {
-			http.Error(w, "Login failed", http.StatusInternalServerError)
+			log.Println("Login failed: ", err)
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, "internal error. try again.")
+			return
+
 		}
-		return
 	}
 
 	// Successful login
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	w.Header().Set("HX-Redirect", "/")
+	w.WriteHeader(http.StatusOK)
 }
 
 func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
@@ -413,17 +420,18 @@ func registerUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 			return
 		}
 		// Save the task to the database
-		err = addUser(email, password, confirmedPassword, db, r)
+		err = addUser(email, password, db, r)
 		if err != nil {
-			log.Println("add user error ", err)
+			log.Println("add user error: ", err, " user: ", email)
 			w.Header().Set("Content-Type", "text/html")
 			fmt.Fprintf(w, "error creating account. please contact admin.")
 			return
 
 		}
 
-		w.WriteHeader(http.StatusOK)
 		w.Header().Set("HX-Redirect", "/logOutHandler")
+		w.WriteHeader(http.StatusOK)
+
 	}
 }
 
@@ -473,6 +481,8 @@ func logOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		}
 		log.Println("tokens deleted for user: ", updatedID)
 	}
+	// w.Header().Set("HX-Redirect", "/")
+	// w.WriteHeader(http.StatusOK)
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 

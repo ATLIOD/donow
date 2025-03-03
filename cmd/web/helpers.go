@@ -102,7 +102,7 @@ func authorize(r *http.Request, db *pgxpool.Pool) error {
 	return nil
 }
 
-func addUser(email string, password string, confirmedPassword string, db *pgxpool.Pool, r *http.Request) error {
+func addUser(email string, password string, db *pgxpool.Pool, r *http.Request) error {
 	passwordHash, err := hashPassword(password)
 	if err != nil {
 		log.Println("error hashing password", err)
@@ -146,6 +146,7 @@ func addUser(email string, password string, confirmedPassword string, db *pgxpoo
 			}
 		} else {
 			log.Println("that account has already been created")
+			return errors.New("account already exists")
 		}
 	}
 

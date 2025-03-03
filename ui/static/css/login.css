@@ -32,6 +32,20 @@ input[type="text"]:focus {
     border-color: #4A90E2;
 }
 
+input[type="password"] {
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+input[type="password"]:focus {
+    border-color: #4A90E2;
+}
+
 button {
     background-color: #4A90E2;
     color: white;
