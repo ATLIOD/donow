@@ -45,7 +45,7 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 			return
 		}
 
-		// Get user ID from token
+		// Get user ID fromi token
 		userID, err = getUserIDFromToken(st.Value, db)
 		if err != nil {
 			log.Println("Error getting user ID from token:", err)
@@ -61,46 +61,10 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		log.Println("error occured: ", err)
 	}
 
-	// Fetch tasks for user
-	stmt := "SELECT id, title, stage FROM tasks WHERE user_id = $1"
-	rows, err := db.Query(context.Background(), stmt, userID)
-	if err != nil {
-		log.Println("Error querying tasks:", err)
-		http.Error(w, "Failed to load tasks", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	// Process results
-	tasks := []models.Task{}
-	for rows.Next() {
-		t := models.Task{}
-		err = rows.Scan(&t.ID, &t.Title, &t.Stage)
-		if err != nil {
-			log.Println("Error scanning task row:", err)
-			http.Error(w, "Error processing tasks", http.StatusInternalServerError)
-			return
-		}
-		tasks = append(tasks, t)
-	}
-
-	if err = rows.Err(); err != nil {
-		log.Println("Error after scanning all rows:", err)
-		http.Error(w, "Error processing tasks", http.StatusInternalServerError)
-		return
-	}
-
-	// Categorize tasks by status
 	var toDo, inProgress, completed []models.Task
-	for _, task := range tasks {
-		switch task.Stage {
-		case "todo":
-			toDo = append(toDo, task)
-		case "in progress":
-			inProgress = append(inProgress, task)
-		case "done":
-			completed = append(completed, task)
-		}
+	toDo, inProgress, completed, err = getTasks(userID, db)
+	if err != nil {
+		log.Println("Error retriving tasks for user:", userID, ": ", err)
 	}
 
 	loggedIN, err := accountExists(r, db)
@@ -108,16 +72,8 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		fmt.Println("error checking if logged in: ", err)
 	}
 
-	type PageData struct {
-		Todo       []models.Task
-		InProgress []models.Task
-		Complete   []models.Task
-		CSRFtoken  string
-		IsLoggedIn bool
-	}
-
 	// Render template with categorized tasks
-	data := PageData{
+	data := models.PageData{
 		Todo:       toDo,
 		InProgress: inProgress,
 		Complete:   completed,
@@ -273,6 +229,7 @@ func loginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) 
 		}
 		log.Println("error occured: ", err)
 	}
+
 	type token struct {
 		CSRFtoken string
 	}

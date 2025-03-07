@@ -435,3 +435,53 @@ func emailInUse(email string, db *pgxpool.Pool) (bool, error) {
 
 	return exists, nil
 }
+
+func getTasks(userID string, db *pgxpool.Pool) ([]models.Task, []models.Task, []models.Task, error) {
+	tasks := []models.Task{}
+	// Fetch tasks for user
+	stmt := "SELECT id, title, stage FROM tasks WHERE user_id = $1"
+	rows, err := db.Query(context.Background(), stmt, userID)
+	if err != nil {
+		log.Println(err)
+		return tasks, tasks, tasks, errors.New("error querying tasks")
+	}
+	todo, inProgress, completed, err := sortTasks(rows)
+	if err != nil {
+		log.Println("Error processing tasks: ", err)
+		return tasks, tasks, tasks, errors.New("error processing tasks")
+	}
+	return todo, inProgress, completed, nil
+}
+
+func sortTasks(rows pgx.Rows) ([]models.Task, []models.Task, []models.Task, error) {
+	tasks := []models.Task{}
+	for rows.Next() {
+		t := models.Task{}
+		err := rows.Scan(&t.ID, &t.Title, &t.Stage)
+		if err != nil {
+			log.Println("Error scanning task row:", err)
+			return tasks, tasks, tasks, errors.New("error processing tasks")
+		}
+		tasks = append(tasks, t)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Println("Error after scanning all rows:", err)
+		return tasks, tasks, tasks, errors.New("error processing tasks")
+	}
+
+	// Categorize tasks by status
+	var toDo, inProgress, completed []models.Task
+	for _, task := range tasks {
+		switch task.Stage {
+		case "todo":
+			toDo = append(toDo, task)
+		case "in progress":
+			inProgress = append(inProgress, task)
+		case "done":
+			completed = append(completed, task)
+		}
+	}
+
+	return toDo, inProgress, completed, nil
+}
