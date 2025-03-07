@@ -2,58 +2,56 @@
 <html>
 
 <head>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-  <link rel="stylesheet" href="/static/css/base.css">
-  <script src="https://unpkg.com/htmx.org"></script>
-  <title>do now</title>
-  <meta name="csrf-token" content="{{ .CSRFtoken }}">
-  <script src="/static/js/csrf.js" defer></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<script src="https://unpkg.com/htmx.org"></script>
+<title>do now</title>
+<meta name="csrf-token" content="{{ .CSRFtoken }}">
+<script src="/static/js/csrf.js" defer></script>
 
 </head>
 
 <body>
-  <div class="topnav">
+<div class="topnav">
     <div class="logo">
-      <a href="/"><b>do now</b></a>
-     </div>
+        <a href="/"><b>do now</b></a>
+    </div>
     <div class="links">
-      <a class="active" href="/"><i class="fa fa-tasks" style="font-size:24px"></i></a>
-      <a href="#timer"><i class="fa fa-clock-o" style="font-size:24px"></i></a>
-      <a href="#account"><i class="fa fa-user" style="font-size:24px"></i></a>
-      <a href="#settings"><i class="fa fa-gear" style="font-size:24px"></i></a>
-    {{if not .IsLoggedIn}}
-      <a href="login"><i class="fa fa-sign-in" style="font-size:24px"></i></a>
-    {{end}}
-    {{if .IsLoggedIn}}
-      <a href="logOut"><i class="fa fa-sign-out" style="font-size:24px"></i></a>
-    {{end}}
-
-
+        <a class="active" href="/"><i class="fa fa-tasks" style="font-size:24px"></i></a>
+        <a href="#timer"><i class="fa fa-clock-o" style="font-size:24px"></i></a>
+        <a href="#account"><i class="fa fa-user" style="font-size:24px"></i></a>
+        <a href="#settings"><i class="fa fa-gear" style="font-size:24px"></i></a>
+        {{if not .IsLoggedIn}}
+            <a href="login"><i class="fa fa-sign-in" style="font-size:24px"></i></a>
+        {{end}}
+        {{if .IsLoggedIn}}
+            <a href="logOut"><i class="fa fa-sign-out" style="font-size:24px"></i></a>
+        {{end}}
     </div>
   </div>
 <div class="main">
     <div class="todo">
-      <h1>todo<a href="#popup" hx-get="/add-task-form" hx-target="#popup" hx-swap="innerHTML"><i class="fa fa-plus-square-o" style="font-size:24px"></i></a></h1>
-      <div id="popup"></div>
-      <div id="overlay"></div>
-        <ul>
+      <h1 class = "category_title">To Do<a href="#popup" hx-get="/add-task-form" hx-target="#popup" hx-swap="innerHTML"><i class="fa fa-plus-square-o" style="font-size:24px "></i></a></h1>
+        <ul >
             {{range .Todo}}
-                <li>
-                    <span>{{.Title}}</span>
-                    <button hx-delete="/deleteTask/{{.ID}}" 
-                        hx-target="closest li" 
-                        hx-swap="outerHTML">
-                        <i class="fa fa-trash" style="font-size:24px"></i>
-                    </button>
-                    
-                    <button hx-patch="/moveTask/{{.ID}}"
-                            hx-vals='{"stage": "in progress"}'
-                            hx-target="closest li"
-                            hx-on:htmx:afterRequest="window.location.reload()"
-                            hx-swap="outerHTML">
-                            <i class="fa fa-arrow-right" style="font-size:24px"></i>
-                    </button>
-
+                <li class = "task_item">
+                    <span class = "task_title">{{.Title}}</span>
+                    <div class = "task_buttons_left">
+                        <button hx-delete="/deleteTask/{{.ID}}" 
+                                hx-target="closest li" 
+                                hx-swap="outerHTML">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class = "task_buttons_right">
+                        <button hx-patch="/moveTask/{{.ID}}"
+                                hx-vals='{"stage": "in progress"}'
+                                hx-target="closest li"
+                                hx-on:htmx:afterRequest="window.location.reload()"
+                                hx-swap="outerHTML">
+                                <i class="fa fa-arrow-right"></i>
+                        </button>
+                    </div>
                     <span class="htmx-indicator">Deleting...</span>
                 </li>
             {{end}}
@@ -61,34 +59,35 @@
     </div>
 
     <div class="inProgress">
-        <h1>in progress</h1>
+        <h1 class = "category_title">In Progress</h1>
         <ul>
             {{range .InProgress}}
-                <li>
-                    <span>{{.Title}}</span>
-                    <button hx-delete="/deleteTask/{{.ID}}" 
-                        hx-target="closest li" 
-                        hx-swap="outerHTML">
-                        <i class="fa fa-trash" style="font-size:24px"></i>
-                    </button>
+                <li class = "task_item">
+                    <span class = "task_title">{{.Title}}</span>
+                    <div class = "task_buttons_left">
+                        <button hx-patch="/moveTask/{{.ID}}"
+                                hx-vals='{"stage": "todo"}'
+                                hx-target="closest li"
+                                hx-on:htmx:afterRequest="window.location.reload()"
+                                hx-swap="outerHTML">
+                                <i class="fa fa-arrow-left"></i>
+                        </button>
+                        <button hx-delete="/deleteTask/{{.ID}}" 
+                                hx-target="closest li" 
+                                hx-swap="outerHTML">
+                        <i class="fa fa-trash"></i>
+                        </button>
 
-                    <button hx-patch="/moveTask/{{.ID}}"
-                            hx-vals='{"stage": "todo"}'
-                            hx-target="closest li"
-                            hx-on:htmx:afterRequest="window.location.reload()"
-                            hx-swap="outerHTML">
-                            <i class="fa fa-arrow-left" style="font-size:24px"></i>
-                    </button>
-
-                    <button hx-patch="/moveTask/{{.ID}}"
-                            hx-vals='{"stage": "done"}'
-                            hx-target="closest li"
-                            hx-on:htmx:afterRequest="window.location.reload()"
-                            hx-swap="outerHTML">
-                            <i class="fa fa-arrow-right" style="font-size:24px"></i>
-                    </button>
-                    </button>
-
+                    </div>
+                    <div class = "task_buttons_right">
+                        <button hx-patch="/moveTask/{{.ID}}"
+                                hx-vals='{"stage": "done"}'
+                                hx-target="closest li"
+                                hx-on:htmx:afterRequest="window.location.reload()"
+                                hx-swap="outerHTML">
+                                <i class="fa fa-arrow-right"></i>
+                        </button>
+                    </div>
                     <span class="htmx-indicator">Deleting...</span>
                 </li>
             {{end}}
@@ -96,31 +95,35 @@
     </div>
 
     <div class="complete">
-        <h1>complete</h1>
+        <h1 class = "category_title">Complete</h1>
         <ul>
             {{range .Complete}}
-                <li>
-                    <span>{{.Title}}</span>
-                    <button hx-delete="/deleteTask/{{.ID}}" 
-                        hx-target="closest li" 
-                        hx-swap="outerHTML">
-                        <i class="fa fa-trash" style="font-size:24px"></i>
-                    </button>
+                <li class = "task_item">
+                    <span class = "task_title">{{.Title}}</span>
+                    <div class = "task_buttons_left">
+                        <button hx-patch="/moveTask/{{.ID}}"
+                                hx-vals='{"stage": "in progress"}'
+                                hx-target="closest li"
+                                hx-on:htmx:afterRequest="window.location.reload()"
+                                hx-swap="outerHTML">
+                                <i class="fa fa-arrow-left"></i>
+                        </button>
+                        <button hx-delete="/deleteTask/{{.ID}}" 
+                                hx-target="closest li" 
+                                hx-swap="outerHTML">
+                            <i class="fa fa-trash"></i>
+                        </button>
 
-                    <button hx-patch="/moveTask/{{.ID}}"
-                            hx-vals='{"stage": "in progress"}'
-                            hx-target="closest li"
-                            hx-on:htmx:afterRequest="window.location.reload()"
-                            hx-swap="outerHTML">
-                            <i class="fa fa-arrow-left" style="font-size:24px"></i>
-                    </button>
-
+                    </div>
                     <span class="htmx-indicator">Deleting...</span>
                 </li>
             {{end}}
         </ul>
     </div>
 </div>
+<div id="popup"></div>
+<div id="overlay"></div>
+
 </body>
 
 </html>

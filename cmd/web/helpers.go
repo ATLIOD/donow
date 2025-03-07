@@ -102,7 +102,7 @@ func authorize(r *http.Request, db *pgxpool.Pool) error {
 	return nil
 }
 
-func addUser(email string, password string, confirmedPassword string, db *pgxpool.Pool, r *http.Request) error {
+func addUser(email string, password string, db *pgxpool.Pool, r *http.Request) error {
 	passwordHash, err := hashPassword(password)
 	if err != nil {
 		log.Println("error hashing password", err)
@@ -146,6 +146,7 @@ func addUser(email string, password string, confirmedPassword string, db *pgxpoo
 			}
 		} else {
 			log.Println("that account has already been created")
+			return errors.New("account already exists")
 		}
 	}
 
@@ -348,22 +349,6 @@ func getCRSFFromID(userID string, db *pgxpool.Pool) (string, error) {
 	}
 
 	return csrfToken, err
-}
-
-func isLoggedIn(r *http.Request, db *pgxpool.Pool) (bool, error) {
-	// get session from token
-	st, err := r.Cookie("session_token")
-	if err != nil && err != http.ErrNoCookie {
-		return false, errors.New("unable to retrieve token")
-	} else if err == http.ErrNoCookie {
-		return false, nil
-	}
-	// get user id if token exists
-	userID, err := getUserIDFromToken(st.Value, db)
-	if err != nil {
-		return false, fmt.Errorf("error retrieving id: %w", err)
-	}
-	return userID != "", nil
 }
 
 func accountExists(r *http.Request, db *pgxpool.Pool) (bool, error) {
