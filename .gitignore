@@ -1,1 +1,4 @@
 .env
+Caddyfile
+docker-compose.yml
+Dockerfile

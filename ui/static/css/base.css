@@ -45,22 +45,33 @@
 }
 
 .todo{
-  width: 33%;
-  border:1px solid #778da9;
-  height: 100%;
-  border-radius: 15px
+    width: 33%;
+    border:1px solid #778da9;
+    height: 100%;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+
 }
 .inProgress{
-  width: 33%;
-  border:1px solid #778da9;
-  height: 100%;
-  border-radius: 15px;
+    width: 33%;
+    border:1px solid #778da9;
+    height: 100%;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+
 }
 .complete{
-  width: 33%;
-  border:1px solid #778da9;
-  height: 100%;
-  border-radius: 15px;
+    width: 33%;
+    border:1px solid #778da9;
+    height: 100%;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    z-index: 100;
 }
 
 .main{
@@ -95,3 +106,51 @@
 #popup:target + #overlay {
     display: block;
 }
+
+.category_title{
+    text-align: center
+}
+
+.task_item{
+    border-radius: 10px;
+    border:1px solid #778da9;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    z-index: 200;
+    margin-bottom: 5px;
+}
+
+.task_title{
+    font-size:24px;
+    padding-left: 10px;
+    text-align: center;
+}
+
+.task_buttons_right{
+    float: right;
+}
+.task_buttons_left{
+    float: left;
+}
+
+ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    }
+
+.fa {
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+button{
+    z-index: 300;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+
+}
+
+
