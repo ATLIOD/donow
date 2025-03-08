@@ -443,6 +443,24 @@ func logOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
+func resetPasswordRequestForm(w http.ResponseWriter, r *http.Request) {
+}
+
+func resetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+}
+
+func temporaryLoginForm(w http.ResponseWriter, r *http.Request) {
+}
+
+func temporaryLoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+}
+
+func changePasswordForm(w http.ResponseWriter, r *http.Request) {
+}
+
+func changePasswordHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+}
+
 func timer(w http.ResponseWriter, r *http.Request) {
 }
 
@@ -450,7 +468,4 @@ func account(w http.ResponseWriter, r *http.Request) {
 }
 
 func settings(w http.ResponseWriter, r *http.Request) {
-}
-
-func create(w http.ResponseWriter, r *http.Request) {
 }
