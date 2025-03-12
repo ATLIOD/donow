@@ -43,9 +43,10 @@ func openDB(dsn string) (*pgxpool.Pool, error) {
 
 func main() {
 	// Load environment variables
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
+	if os.Getenv("APP_ENV") != "production" {
+		if err := godotenv.Load(); err !=nil{
+			log.Println("No .env fie found, continuin..")
+		}
 	}
 	log.Println("environment: ", os.Getenv("APP_ENV"))
 
