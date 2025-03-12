@@ -133,7 +133,7 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 }
 
 // handler displays template for adding tasks
-func addTaskForm(w http.ResponseWriter, r *http.Request) {
+func addTaskForm(w http.ResponseWriter) {
 	tmpl, err := template.ParseFiles("./ui/html/add-task-form.html")
 	if err != nil {
 		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)

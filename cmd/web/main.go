@@ -47,16 +47,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
+	log.Println("environment: ", os.Getenv("APP_ENV"))
 
 	// Build the DSN
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_SSLMODE"),
-	)
+	// dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+	// 	os.Getenv("DB_USER"),
+	// 	os.Getenv("DB_PASSWORD"),
+	// 	os.Getenv("DB_HOST"),
+	// 	os.Getenv("DB_PORT"),
+	// 	os.Getenv("DB_NAME"),
+	// 	os.Getenv("DB_SSLMODE"),
+	// )
+	dsn := os.Getenv("DATABASE_URL")
 
 	// Initialize the database connection pool
 	dbPool, err := openDB(dsn)
@@ -77,7 +79,7 @@ func main() {
 		tasks(w, r, dbPool)
 	})
 	mux.HandleFunc("/add-task-form", func(w http.ResponseWriter, r *http.Request) {
-		addTaskForm(w, r)
+		addTaskForm(w)
 	})
 	mux.HandleFunc("/addTask", func(w http.ResponseWriter, r *http.Request) {
 		addTaskHandler(w, r, dbPool)
@@ -105,9 +107,6 @@ func main() {
 	})
 
 	// Start the server
-	log.Println("Starting server on :8080")
-	err = http.ListenAndServe(":8080", mux)
-	if err != nil {
-		log.Fatalf("Server failed: %v", err)
-	}
+	fmt.Println("Starting server on :8080")
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
