@@ -109,7 +109,7 @@ func main() {
 	mux.HandleFunc("/forgot-password", func(w http.ResponseWriter, r *http.Request) {
 		resetPasswordRequestForm(w, r)
 	})
-	mux.HandleFunc("/reset-password", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/reset-password/send-email", func(w http.ResponseWriter, r *http.Request) {
 		resetPasswordRequestHandler(w, r, dbPool)
 	})
 	mux.HandleFunc("/forgot-password/validate-user", func(w http.ResponseWriter, r *http.Request) {
