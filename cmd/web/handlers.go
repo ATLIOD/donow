@@ -444,21 +444,95 @@ func logOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 }
 
 func resetPasswordRequestForm(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("./ui/html/reset-passsword-request.html")
+	if err != nil {
+		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = tmpl.Execute(w, nil)
+	if err != nil {
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func resetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	email := r.FormValue("email")
+	exists, err := emailInUse(email, db)
+	if !exists {
+		// rediect as if succesful
+	}
+	if err != nil {
+		// print errors
+	}
+	otp := generateOTP()
+	setOTP(email, otp, db)
+	sendOTP(email, otp)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "reset_email",
+		Value:    email,
+		Path:     "/",
+		HttpOnly: true,
+		// Secure:   true,
+		MaxAge: 300,
+	})
+
+	// redirect to temp login
+	// include w and r both
 }
 
 func temporaryLoginForm(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("reset_email")
+	email := ""
+	if err == nil {
+		email = cookie.Value
+	}
+	tmpl, err := template.ParseFiles("./ui/html/temporary-login.html")
+	if err != nil {
+		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = tmpl.Execute(w, email)
+	if err != nil {
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func temporaryLoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	email := r.FormValue("email")
+	tempPassword := r.FormValue("one_time_password")
+
+	//compare temp to db for email
+	//
+	//redirect to changepasswordform
+	//use w and r again?
 }
 
 func changePasswordForm(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("reset_email")
+	email := ""
+	if err == nil {
+		email = cookie.Value
+	}
+	tmpl, err := template.ParseFiles("./ui/html/change-password.html")
+	if err != nil {
+		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = tmpl.Execute(w, email)
+	if err != nil {
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func changePasswordHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+	confirmPassword := r.FormValue("confirm-password")
+
+	//passwords same?
+	//
+	//update password in db
 }
 
 func timer(w http.ResponseWriter, r *http.Request) {

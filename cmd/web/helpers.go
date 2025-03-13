@@ -485,3 +485,7 @@ func sortTasks(rows pgx.Rows) ([]models.Task, []models.Task, []models.Task, erro
 
 	return toDo, inProgress, completed, nil
 }
+
+func generateOTP() string {
+	return ""
+}
