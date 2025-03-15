@@ -487,5 +487,30 @@ func sortTasks(rows pgx.Rows) ([]models.Task, []models.Task, []models.Task, erro
 }
 
 func generateOTP() string {
-	return ""
+	return generateToken(32)
+}
+
+func setOTP(email string, otp string, db *pgxpool.Pool) error {
+	// execute query to set otp for email in datbase
+	return nil
+}
+
+func sendOTP(email string, otp string) error {
+	// call function to send email to user
+	return nil
+}
+
+func isTempPasswordCorrect(tempPassword string, email string, db *pgxpool.Pool) (bool, error) {
+	// query database for otp  for designated email
+	// compare with passed temp password
+	return true, nil
+}
+
+func samePassword(password string, confirmedPassword string) bool {
+	return password == confirmedPassword
+}
+
+func changePassword(email string, password string, db *pgxpool.Pool) error {
+	// db exec to chnge password where email = $1
+	return nil
 }
