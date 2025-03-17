@@ -107,6 +107,25 @@ func main() {
 		logOutHandler(w, r, dbPool)
 	})
 
+	mux.HandleFunc("/forgot-password", func(w http.ResponseWriter, r *http.Request) {
+		resetPasswordRequestForm(w, r)
+	})
+	mux.HandleFunc("/reset-password/send-email", func(w http.ResponseWriter, r *http.Request) {
+		resetPasswordRequestHandler(w, r, dbPool)
+	})
+	mux.HandleFunc("/forgot-password/validate-user", func(w http.ResponseWriter, r *http.Request) {
+		temporaryLoginForm(w, r, dbPool)
+	})
+	mux.HandleFunc("/reset-password/temporary-login", func(w http.ResponseWriter, r *http.Request) {
+		temporaryLoginHandler(w, r, dbPool)
+	})
+	mux.HandleFunc("/forgot-password/change-password", func(w http.ResponseWriter, r *http.Request) {
+		changePasswordForm(w, r, dbPool)
+	})
+	mux.HandleFunc("/reset-password/update-password", func(w http.ResponseWriter, r *http.Request) {
+		changePasswordHandler(w, r, dbPool)
+	})
+
 	// Start the server
 	fmt.Println("Starting server on :8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
+.env
+=======
 *.env
+>>>>>>> 471e8ddf000113cbdd6e87f3d000e139e784cecd
 Caddyfile
 docker-compose.yml
 Dockerfile

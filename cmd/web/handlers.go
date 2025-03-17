@@ -45,7 +45,7 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 			return
 		}
 
-		// Get user ID from token
+		// Get user ID fromi token
 		userID, err = getUserIDFromToken(st.Value, db)
 		if err != nil {
 			log.Println("Error getting user ID from token:", err)
@@ -61,46 +61,10 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		log.Println("error occured: ", err)
 	}
 
-	// Fetch tasks for user
-	stmt := "SELECT id, title, stage FROM tasks WHERE user_id = $1"
-	rows, err := db.Query(context.Background(), stmt, userID)
-	if err != nil {
-		log.Println("Error querying tasks:", err)
-		http.Error(w, "Failed to load tasks", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	// Process results
-	tasks := []models.Task{}
-	for rows.Next() {
-		t := models.Task{}
-		err = rows.Scan(&t.ID, &t.Title, &t.Stage)
-		if err != nil {
-			log.Println("Error scanning task row:", err)
-			http.Error(w, "Error processing tasks", http.StatusInternalServerError)
-			return
-		}
-		tasks = append(tasks, t)
-	}
-
-	if err = rows.Err(); err != nil {
-		log.Println("Error after scanning all rows:", err)
-		http.Error(w, "Error processing tasks", http.StatusInternalServerError)
-		return
-	}
-
-	// Categorize tasks by status
 	var toDo, inProgress, completed []models.Task
-	for _, task := range tasks {
-		switch task.Stage {
-		case "todo":
-			toDo = append(toDo, task)
-		case "in progress":
-			inProgress = append(inProgress, task)
-		case "done":
-			completed = append(completed, task)
-		}
+	toDo, inProgress, completed, err = getTasks(userID, db)
+	if err != nil {
+		log.Println("Error retriving tasks for user:", userID, ": ", err)
 	}
 
 	loggedIN, err := accountExists(r, db)
@@ -108,16 +72,8 @@ func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		fmt.Println("error checking if logged in: ", err)
 	}
 
-	type PageData struct {
-		Todo       []models.Task
-		InProgress []models.Task
-		Complete   []models.Task
-		CSRFtoken  string
-		IsLoggedIn bool
-	}
-
 	// Render template with categorized tasks
-	data := PageData{
+	data := models.PageData{
 		Todo:       toDo,
 		InProgress: inProgress,
 		Complete:   completed,
@@ -273,6 +229,7 @@ func loginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) 
 		}
 		log.Println("error occured: ", err)
 	}
+
 	type token struct {
 		CSRFtoken string
 	}
@@ -399,7 +356,7 @@ func registerUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 			fmt.Fprintf(w, "Passwords must be at least 8 characters in length and contain: one uppercase letter, one lowercase letter, one special character, one digit")
 			return
 		}
-		if password != confirmedPassword {
+		if !samePassword(password, confirmedPassword) {
 			log.Println("passwords must match: ", err)
 			w.Header().Set("Content-Type", "text/html")
 			fmt.Fprintf(w, "passwords must match")
@@ -486,6 +443,248 @@ func logOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
+func resetPasswordRequestForm(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("./ui/html/reset-password-request.html")
+	if err != nil {
+		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = tmpl.Execute(w, nil)
+	if err != nil {
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func resetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	email := r.FormValue("email")
+	exists, err := emailInUse(email, db)
+	if !exists {
+		w.Header().Set("HX-Redirect", "/forgot-password/validate-user")
+		w.WriteHeader(http.StatusOK)
+
+	}
+	if err != nil {
+		log.Println("error checking if email exists: ", email, " |error:", err)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "internal error. please try again")
+		return
+	}
+	if !cookieExists(r, "session_token") {
+		log.Println("No session found, creating temporary user")
+		_, err := createTemporaryUser(w, db)
+		if err != nil {
+			log.Println("Error creating temporary user:", err)
+			http.Error(w, "Failed to create session", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	otp := generateOTP()
+	err = setOTP(email, otp, db)
+	if err != nil {
+		log.Println("erorr setting otp for user: ", email, " |error:", err)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "internal error. please try again")
+		return
+	}
+
+	err = sendOTP(email, otp)
+	if err != nil {
+		log.Println("error seding password reset email to user: ", email, " |error:", err)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "internal error. please try again")
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "reset_email",
+		Value:    email,
+		Path:     "/",
+		HttpOnly: true,
+		// Secure:   true,
+		MaxAge: 300,
+	})
+
+	// redirect to temp login
+	w.Header().Set("HX-Redirect", "/forgot-password/validate-user")
+	w.WriteHeader(http.StatusOK)
+}
+
+func temporaryLoginForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	cookie, err := r.Cookie("reset_email")
+	var email string
+	if err == nil {
+		email = cookie.Value
+	}
+	type TemporaryLoginData struct {
+		CSRFtoken string
+		Email     string
+	}
+
+	st, err := r.Cookie("session_token")
+	if err != nil || st.Value == "" {
+		log.Println("unable to retrieve token:", err)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "internal error. Please try agian.")
+		return
+
+	}
+	csrfToken, err := getCSRFFromST(st.Value, db)
+	if err != nil || st.Value == "" {
+		log.Println("unable to retrieve csrf token:", err, "user: ", email)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "internal error. Please try agian.")
+		return
+
+	}
+
+	data := TemporaryLoginData{
+		Email:     email,
+		CSRFtoken: csrfToken,
+	}
+
+	tmpl, err := template.ParseFiles("./ui/html/temporary-login.html")
+	if err != nil {
+		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func temporaryLoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	err := authorize(r, db)
+	if err != nil {
+		log.Println("Authorization failed:", err)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "internal error. Please try agian.")
+		return
+	}
+	err = authorize(r, db)
+	if err != nil {
+		log.Println("Authorization failed:", err)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "internal error. Please try agian.")
+		return
+	}
+
+	r.ParseForm()
+	email := r.FormValue("email")
+	log.Println("email: ", email)
+	tempPassword := r.FormValue("one_time_password")
+
+	log.Println("checking if matches")
+	matches, err := isTempPasswordCorrect(tempPassword, email, db)
+	if err != nil {
+		log.Println("user OTP is incorrect: ", email, " |error:", err)
+		if err.Error() == "invalid credentials" {
+			log.Println("Invalid authentication code")
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, "invalid autntication code. Please try agian.")
+			return
+		}
+	}
+	if matches {
+		log.Println("temporaty login succesful for user: ", email)
+		// redirect to changepasswordform
+		w.Header().Set("HX-Redirect", "/forgot-password/change-password")
+		w.WriteHeader(http.StatusOK)
+
+	}
+	if !matches {
+		log.Println("Invalid authentication code")
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprintf(w, "Invalid authentication code. Please try again.")
+		return
+	}
+}
+
+func changePasswordForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	cookie, err := r.Cookie("reset_email")
+	email := ""
+	if err == nil {
+		email = cookie.Value
+	}
+	type TemporaryLoginData struct {
+		Email     string
+		CSRFtoken string
+	}
+
+	st, err := r.Cookie("session_token")
+	if err != nil || st.Value == "" {
+		log.Println("unable to retrieve token:", err, "user: ", email)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "internal error. Please try agian.")
+		return
+
+	}
+	csrfToken, err := getCSRFFromST(st.Value, db)
+	if err != nil || st.Value == "" {
+		log.Println("unable to retrieve csrf token:", err, "user: ", email)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "internal error. Please try agian.")
+		return
+
+	}
+
+	data := TemporaryLoginData{
+		Email:     email,
+		CSRFtoken: csrfToken,
+	}
+
+	tmpl, err := template.ParseFiles("./ui/html/change-password.html")
+	if err != nil {
+		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func changePasswordHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	err := authorize(r, db)
+	if err != nil {
+		log.Println("Authorization failed:", err)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "internal error. Please try agian.")
+		return
+	}
+
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+	confirmedPassword := r.FormValue("confirm-password")
+
+	err = validatePassword(password)
+	if err != nil {
+		log.Println("invalid password: ", err)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "Passwords must be at least 8 characters in length and contain: one uppercase letter, one lowercase letter, one special character, one digit")
+		return
+	}
+
+	if !samePassword(password, confirmedPassword) {
+		log.Println("passwords must match: ", email)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "passwords must match")
+		return
+	}
+
+	err = changePassword(email, password, db)
+	if err != nil {
+		log.Println("erorr changing password for user: ", email, " |error:", err)
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, "internal error. please try again")
+		return
+	}
+	w.Header().Set("HX-Redirect", "/login")
+	w.WriteHeader(http.StatusOK)
+}
+
 func timer(w http.ResponseWriter, r *http.Request) {
 }
 
@@ -493,7 +692,4 @@ func account(w http.ResponseWriter, r *http.Request) {
 }
 
 func settings(w http.ResponseWriter, r *http.Request) {
-}
-
-func create(w http.ResponseWriter, r *http.Request) {
 }
