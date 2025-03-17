@@ -9,13 +9,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/mail"
+	netmail "net/mail"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/sendgrid/sendgrid-go"
+	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -84,7 +87,6 @@ func authorize(r *http.Request, db *pgxpool.Pool) error {
 	if err != nil || st.Value == "" {
 		return errors.New("unauthorized: missing or empty session token")
 	}
-
 	if !tokenExists(st.Value, db) {
 		return errors.New("unauthorized: invalid session token")
 	}
@@ -98,7 +100,7 @@ func authorize(r *http.Request, db *pgxpool.Pool) error {
 		log.Println(csrf, " | ", expectedCSRF)
 		return errors.New("unauthorized: invalid CSRF token")
 	}
-
+	log.Println("authorized")
 	return nil
 }
 
@@ -375,7 +377,7 @@ func accountExists(r *http.Request, db *pgxpool.Pool) (bool, error) {
 }
 
 func validateEmail(email string) error {
-	_, err := mail.ParseAddress(email)
+	_, err := netmail.ParseAddress(email)
 
 	return err
 }
@@ -484,4 +486,123 @@ func sortTasks(rows pgx.Rows) ([]models.Task, []models.Task, []models.Task, erro
 	}
 
 	return toDo, inProgress, completed, nil
+}
+
+func generateOTP() string {
+	return generateToken(32)
+}
+
+func setOTP(email string, otp string, db *pgxpool.Pool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// execute query to set otp for email in datbase
+	stmt := "UPDATE users SET one_time_password = $1 WHERE email = $2 RETURNING id;"
+
+	var updatedID string
+	err := db.QueryRow(ctx, stmt, otp, email).Scan(&updatedID)
+	if err != nil {
+		log.Printf("failed to set otp: %s", err)
+		return errors.New("unable to set otp")
+	}
+
+	return nil
+}
+
+func sendOTP(email string, otp string) error {
+	// Sender email
+	from := mail.NewEmail("Donow Support", "donotreply@donow.it.com")
+	subject := "Password Reset Code"
+
+	// Recipient email
+	to := mail.NewEmail("", email)
+
+	// OTP Message
+	plainTextContent := fmt.Sprintf("Your password reset code is: %s", otp)
+	htmlContent := fmt.Sprintf("<strong>Your passwod reset code is: %s</strong>", otp)
+
+	// Create email message
+	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
+
+	// SendGrid client
+	client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
+	response, err := client.Send(message)
+
+	if err != nil {
+		log.Println("Error sending email:", err)
+		return err
+	} else {
+		fmt.Println("Status Code:", response.StatusCode)
+		fmt.Println("Response Body:", response.Body)
+		fmt.Println("Response Headers:", response.Headers)
+	}
+
+	log.Println("OTP email sent successfully to user: ", email)
+	return nil
+}
+
+func isTempPasswordCorrect(tempPassword string, email string, db *pgxpool.Pool) (bool, error) {
+	// query database for otp  for designated email
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var otp *string
+
+	getUserIDstmt := "SELECT one_time_password FROM users WHERE email = $1;"
+	row := db.QueryRow(ctx, getUserIDstmt, email)
+	err := row.Scan(&otp)
+	if err != nil {
+		log.Printf("error getting otp from database: \nuser: %s \nerror: %s", email, err)
+		return false, errors.New("unable to retrieve otp")
+	}
+
+	// if null valeu retrieved from datavase for otp
+	if otp == nil {
+		log.Printf("no OTP found for user: %s", email)
+		return false, errors.New("otp is null")
+	}
+
+	// compare with passed temp password
+	if tempPassword == *otp {
+		stmt := "UPDATE users SET one_time_password = NULL WHERE email = $1 RETURNING email;"
+
+		var updatedEmail string
+		err := db.QueryRow(ctx, stmt, email).Scan(&updatedEmail)
+		if err != nil {
+			log.Println(err.Error())
+			log.Printf("failed to delete otp for user: %s", updatedEmail)
+			return false, errors.New("unable to delete otp")
+		}
+	}
+	// debuging
+	log.Println("reaches end of temp pass check")
+	return tempPassword == *otp, nil
+}
+
+func samePassword(password string, confirmedPassword string) bool {
+	return password == confirmedPassword
+}
+
+func changePassword(email string, password string, db *pgxpool.Pool) error {
+	// hash password
+	passwordHash, err := hashPassword(password)
+	if err != nil {
+		return err
+	}
+
+	// db exec to change password where email = $1
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	stmt := "UPDATE users SET password_hash = $1 WHERE email = $2 RETURNING id;"
+
+	var updatedID string
+	err = db.QueryRow(ctx, stmt, passwordHash, email).Scan(&updatedID)
+	if err != nil {
+		log.Printf("failed to update user password for user: %s", email)
+		return errors.New("unable to update user password")
+
+	}
+
+	return nil
 }

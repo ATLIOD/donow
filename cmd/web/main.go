@@ -114,13 +114,13 @@ func main() {
 		resetPasswordRequestHandler(w, r, dbPool)
 	})
 	mux.HandleFunc("/forgot-password/validate-user", func(w http.ResponseWriter, r *http.Request) {
-		temporaryLoginForm(w, r)
+		temporaryLoginForm(w, r, dbPool)
 	})
-	mux.HandleFunc("reset-password/temporary-login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/reset-password/temporary-login", func(w http.ResponseWriter, r *http.Request) {
 		temporaryLoginHandler(w, r, dbPool)
 	})
 	mux.HandleFunc("/forgot-password/change-password", func(w http.ResponseWriter, r *http.Request) {
-		changePasswordForm(w, r)
+		changePasswordForm(w, r, dbPool)
 	})
 	mux.HandleFunc("/reset-password/update-password", func(w http.ResponseWriter, r *http.Request) {
 		changePasswordHandler(w, r, dbPool)

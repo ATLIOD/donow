@@ -10,6 +10,7 @@
   <meta name="csrf-token" content="{{ .CSRFtoken }}">
   <script src="/static/js/csrf.js" defer></script>
 
+
 </head>
 
 <body>
@@ -26,13 +27,12 @@
     </div>
   </div>
 <div class="main">
-    <form hx-post="reset-password/temporary-login" 
+    <form hx-post="/reset-password/temporary-login" 
     hx-target="#error-message"
     hx-swap="innerHTML">
 
-        <input type="hidden" name="csrf-token" id="csrf-token">
 
-        <input type="hidden" name="email" value="{{ .email }}">
+        <input type="hidden" name="email" value="{{ .Email }}">
 
         <label for="one_time_password">verification code:</label>
         <input type="password" placeholder="Enter your password" id="one_time_password" name="one_time_password"  required>
@@ -42,6 +42,9 @@
 
         <div id="error-message" style="color: red; margin-top: 10px;"></div>
     </form>
+
 </div>
+
+<h1>We have sent an email containing a code for temporary verification. Please check your spam folder as well</h1>
 
 </body>
