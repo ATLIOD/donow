@@ -783,12 +783,10 @@ func updateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 		return
 	}
 
-	// Convert form values to integers
 	studyTime, err1 := strconv.Atoi(r.FormValue("study_time"))
 	shortTime, err2 := strconv.Atoi(r.FormValue("short_time"))
 	longTime, err3 := strconv.Atoi(r.FormValue("long_time"))
 
-	// Validate input: must be greater than 0
 	if err1 != nil || err2 != nil || err3 != nil || studyTime <= 0 || shortTime <= 0 || longTime <= 0 {
 		fmt.Fprintf(w, "<p style='color: red;'>Error: All values must be positive integers greater than 0.</p>")
 		return
