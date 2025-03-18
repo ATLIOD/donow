@@ -685,11 +685,122 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 	w.WriteHeader(http.StatusOK)
 }
 
-func timer(w http.ResponseWriter, r *http.Request) {
+func timer(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	type TimerData struct {
+		Study      int
+		ShortBreak int
+		LongBreak  int
+		IsLoggedIn bool
+	}
+
+	if !cookieExists(r, "session_token") {
+		log.Println("No session found, creating temporary user")
+		_, err := createTemporaryUser(w, db)
+		if err != nil {
+			log.Println("Error creating temporary user:", err)
+			http.Error(w, "Failed to create session", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	loggedIN, err := accountExists(r, db)
+	if err != nil {
+		fmt.Println("error checking if logged in: ", err)
+	}
+
+	st, _ := r.Cookie("session_token")
+
+	studyTime, shortTime, longTime, err := getTimes(st.Value, db)
+	if err != nil {
+		log.Println("error getting times: ", err)
+	}
+
+	data := TimerData{
+		Study:      studyTime,
+		ShortBreak: shortTime,
+		LongBreak:  longTime,
+		IsLoggedIn: loggedIN,
+	}
+	tmpl, err := template.ParseFiles("./ui/html/timer.html")
+	if err != nil {
+		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
-func account(w http.ResponseWriter, r *http.Request) {
+func settingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	type TimerData struct {
+		Study      int
+		ShortBreak int
+		LongBreak  int
+		IsLoggedIn bool
+	}
+
+	if !cookieExists(r, "session_token") {
+		log.Println("No session found, creating temporary user")
+		_, err := createTemporaryUser(w, db)
+		if err != nil {
+			log.Println("Error creating temporary user:", err)
+			http.Error(w, "Failed to create session", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	loggedIN, err := accountExists(r, db)
+	if err != nil {
+		fmt.Println("error checking if logged in: ", err)
+	}
+
+	st, _ := r.Cookie("session_token")
+
+	studyTime, shortTime, longTime, err := getTimes(st.Value, db)
+	if err != nil {
+		log.Println("error getting times: ", err)
+	}
+
+	data := TimerData{
+		Study:      studyTime,
+		ShortBreak: shortTime,
+		LongBreak:  longTime,
+		IsLoggedIn: loggedIN,
+	}
+
+	tmpl, err := template.ParseFiles("./ui/html/settings.html")
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+	tmpl.Execute(w, data)
 }
 
-func settings(w http.ResponseWriter, r *http.Request) {
+func updateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	studyTime, err1 := strconv.Atoi(r.FormValue("study_time"))
+	shortTime, err2 := strconv.Atoi(r.FormValue("short_time"))
+	longTime, err3 := strconv.Atoi(r.FormValue("long_time"))
+
+	if err1 != nil || err2 != nil || err3 != nil || studyTime <= 0 || shortTime <= 0 || longTime <= 0 {
+		fmt.Fprintf(w, "<p style='color: red;'>Error: All values must be positive integers greater than 0.</p>")
+		return
+	}
+
+	st, _ := r.Cookie("session_token")
+
+	err := updateSettings(st.Value, studyTime, shortTime, longTime, db)
+	if err != nil {
+		log.Println("Database update error:", err)
+		fmt.Fprintf(w, "<p style='color: red;'>Error updating settings.</p>")
+		return
+	}
+
+	// Return an HTMX response (updates the #messages div)
+	fmt.Fprintf(w, "<p style='color: green;'>Settings updated successfully!</p>")
 }
