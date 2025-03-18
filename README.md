@@ -1,6 +1,6 @@
 # do now
 
-do now can be found at [donow.it.com](donow.it.com)
+do now can be found at [donow.it.com](https://www.donow.it.com)
 
 do now is a task management web app built with **Go**, **HTMX**, **AlpineJS** and **PostgreSQL**, designed to help you manage your tasks efficiently through a clean and simple interface. This app focuses on providing a seamless user experience with dynamic interactions.
 
@@ -26,7 +26,7 @@ do now is a task management web app built with **Go**, **HTMX**, **AlpineJS** an
 
 ## Accessing the Website
 
-Since this is a web app, you don't need to install anything on your local machine to use it. Once deployed, you can simply visit the URL at [donow.it.com](donow.it.com)
+Since this is a web app, you don't need to install anything on your local machine to use it. Once deployed, you can simply visit the URL at [donow.it.com](https://www.donow.it.com)
 
 ## License
 
