@@ -124,6 +124,9 @@ func main() {
 	mux.HandleFunc("/reset-password/update-password", func(w http.ResponseWriter, r *http.Request) {
 		changePasswordHandler(w, r, dbPool)
 	})
+	mux.HandleFunc("/timer", func(w http.ResponseWriter, r *http.Request) {
+		timer(w, r)
+	})
 
 	// Start the server
 	fmt.Println("Starting server on :8080")

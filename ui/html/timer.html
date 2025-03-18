@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/timer.css">
+    <script src="https://unpkg.com/htmx.org"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="/static/js/timer.js"></script>
+    <title>do now</title>
+
+</head>
+
+<body>
+  <div class="topnav">
+    <div class="logo">
+      <a href="/"><b>do now</b></a>
+    </div>
+    <div class="links">
+      <a href="/"><i class="fa fa-tasks" style="font-size:24px"></i></a>
+      <a class="active" href="timer"><i class="fa fa-clock-o" style="font-size:24px"></i></a>
+      <a href="#account"><i class="fa fa-user" style="font-size:24px"></i></a>
+      <a href="#settings"><i class="fa fa-gear" style="font-size:24px"></i></a>
+
+    </div>
+  </div>
+<div class="timer-main">
+
+    <div class="timer-container" x-data="{ timerInstance: null, duration: 25, activeMode: 'study' }" x-init="timerInstance = timer(duration)">
+        <div class="mode-buttons">
+            <button 
+                @click="duration = 25; activeMode = 'study'; timerInstance.reset(duration)"
+                :class="{ 'active': activeMode === 'study' }"
+            >Study</button>
+            
+            <button 
+                @click="duration = 5; activeMode = 'shortBreak'; timerInstance.reset(duration)"
+                :class="{ 'active': activeMode === 'shortBreak' }"
+            >Short Break</button>
+            
+            <button 
+                @click="duration = 15; activeMode = 'longBreak'; timerInstance.reset(duration)"
+                :class="{ 'active': activeMode === 'longBreak' }"
+            >Long Break</button>
+        </div>
+        
+        <div class="timer" x-init="timerInstance.init()">
+            <div class="timer-display">
+                <span x-text="timerInstance.time().minutes"></span>:<span x-text="timerInstance.time().seconds"></span>
+            </div>
+            
+            <div class="control-buttons">
+                <button @click="timerInstance.start()">Start</button>
+                <button @click="timerInstance.stop()">Stop</button>
+                <button @click="timerInstance.resume()">Resume</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>

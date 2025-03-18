@@ -686,6 +686,26 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 }
 
 func timer(w http.ResponseWriter, r *http.Request) {
+	type TimerData struct {
+		Study      int
+		ShortBreak int
+		LongBreak  int
+	}
+
+	data := TimerData{
+		Study:      40, // Set your default study time in minutes
+		ShortBreak: 10, // Set short break duration
+		LongBreak:  20, // Set long break duration
+	}
+	tmpl, err := template.ParseFiles("./ui/html/timer.html")
+	if err != nil {
+		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func account(w http.ResponseWriter, r *http.Request) {

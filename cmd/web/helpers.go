@@ -510,6 +510,7 @@ func setOTP(email string, otp string, db *pgxpool.Pool) error {
 }
 
 func sendOTP(email string, otp string) error {
+	log.Println("api key: ", os.Getenv("SENDGRID_API_KEY"))
 	// Sender email
 	from := mail.NewEmail("Donow Support", "donotreply@donow.it.com")
 	subject := "Password Reset Code"
