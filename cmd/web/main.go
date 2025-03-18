@@ -125,7 +125,13 @@ func main() {
 		changePasswordHandler(w, r, dbPool)
 	})
 	mux.HandleFunc("/timer", func(w http.ResponseWriter, r *http.Request) {
-		timer(w, r)
+		timer(w, r, dbPool)
+	})
+	mux.HandleFunc("/settings", func(w http.ResponseWriter, r *http.Request) {
+		settingsHandler(w, r, dbPool)
+	})
+	mux.HandleFunc("/update-settings", func(w http.ResponseWriter, r *http.Request) {
+		updateSettingsHandler(w, r, dbPool)
 	})
 
 	// Start the server

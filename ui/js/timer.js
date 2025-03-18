@@ -4,31 +4,28 @@ function timer(durationInMinutes) {
     expiry: null,
     remaining: 0,
     interval: null,
-
+    
     init() {
       this.reset(durationInMinutes);
     },
 
     reset(minutes) {
-      this.stop(); // Stop existing timer before resetting
+      this.stop(); // Ensure the timer stops before resetting
       this.expiry = new Date().getTime() + minutes * 60000;
-      this.remaining = minutes * 60;
+      this.setRemaining();
+      if (this.interval) clearInterval(this.interval);
     },
 
     start() {
       this.expiry = new Date().getTime() + this.remaining * 1000;
       this.interval = setInterval(() => {
         this.setRemaining();
-        if (this.remaining <= 0) this.stop();
+        if (this.remaining <= 0) clearInterval(this.interval);
       }, 1000);
     },
 
     stop() {
       clearInterval(this.interval);
-    },
-
-    resume() {
-      this.start();
     },
 
     setRemaining() {
@@ -52,4 +49,12 @@ function timer(durationInMinutes) {
     },
   };
 }
+
+// document.addEventListener("DOMContentLoaded", () => {
+//   let timerInstance = Alpine.reactive(timer(studyTime));
+//
+//   document.getElementById("start").addEventListener("click", () => timerInstance.start());
+//   document.getElementById("stop").addEventListener("click", () => timerInstance.stop());
+//   document.getElementById("reset").addEventListener("click", () => timerInstance.init(studyTime));
+// });
 
