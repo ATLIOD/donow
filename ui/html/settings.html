@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/settings.css">
+    <script src="https://unpkg.com/htmx.org"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="/static/js/timer.js"></script>
+    <title>do now</title>
+
+</head>
+
+<body>
+  <div class="topnav">
+    <div class="logo">
+      <a href="/"><b>do now</b></a>
+    </div>
+    <div class="links">
+      <a href="/"><i class="fa fa-tasks" style="font-size:24px"></i></a>
+      <a href="timer"><i class="fa fa-clock-o" style="font-size:24px"></i></a>
+      <a class="active" href="settings"><i class="fa fa-gear" style="font-size:24px"></i></a>
+        {{if not .IsLoggedIn}}
+            <a href="login"><i class="fa fa-sign-in" style="font-size:24px"></i></a>
+        {{end}}
+        {{if .IsLoggedIn}}
+            <a href="logOut"><i class="fa fa-sign-out" style="font-size:24px"></i></a>
+        {{end}}
+ 
+
+    </div>
+  </div>
+<div class="main">
+    <form 
+        hx-post="/update-settings" 
+        hx-target="#update-message" 
+        hx-swap="innerHTML"
+    >
+        <label>
+            Study Time (minutes):
+            <input type="number" name="study_time" value="{{.Study}}" min="1" required>
+        </label>
+        <br><br>
+
+        <label>
+            Short Break Time (minutes):
+            <input type="number" name="short_time" value="{{.ShortBreak}}" min="1" required>
+        </label>
+        <br><br>
+
+        <label>
+            Long Break Time (minutes):
+            <input type="number" name="long_time" value="{{.LongBreak}}" min="1" required>
+        </label>
+        <br><br>
+
+        <button type="submit">Save Changes</button>
+    </form>
+
+    <!-- This div will be updated with a success message after form submission -->
+    <div id="update-message"></div>
+</div>
+
+</body>
