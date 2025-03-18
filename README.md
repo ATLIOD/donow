@@ -8,17 +8,17 @@ do now is a task management web app built with **Go**, **HTMX**, **AlpineJS** an
 
 - **Task Management**: Create, update, and mark tasks as completed.
 - **Pomodoro Timer**: Built-in Pomodoro timer to help boost productivity.
--**User Account Creation**: Users can creat accounts to save their data across different machines and browsers.
--**User Sessions**: Makes use of sessions for that users do not require an account to keep their changes on one machine between sessions.
--**Email management**: Makes use of email servers and APIs to send users password reset emails.
+- **User Account Creation**: Users can creat accounts to save their data across different machines and browsers.
+- **User Sessions**: Makes use of sessions for that users do not require an account to keep their changes on one machine between sessions.
+- **Email management**: Makes use of email servers and APIs to send users password reset emails.
 
 ## Technologies Used
 
 - **Go**: The backend is written in Go (Golang), providing a fast and lightweight HTTP server.
 - **HTMX**: A modern framework for building dynamic user interfaces with minimal JavaScript.
-- **AlpineJS**: A lightweight JavaScript framework used for enhancing front-end interactivity in the timer
+- **AlpineJS**: A lightweight JavaScript framework used for enhancing front-end interactivity in the timer.
 - **PostgreSQL**: Used for persistent data storage, including user and task information.
-- **Docker**: The app is packaged with Docker, making it easy to deploy server-side
+- **Docker**: The app is packaged with Docker, making it easy to deploy server-side.
 
 ## Accessing the Website
 
