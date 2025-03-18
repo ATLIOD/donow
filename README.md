@@ -7,7 +7,11 @@ do now is a task management web app built with **Go**, **HTMX**, **AlpineJS** an
 ## Features
 
 - **Task Management**: Create, update, and mark tasks as completed.
+ ![image](https://github.com/user-attachments/assets/7acfbf23-a46d-4750-b4ab-d3b6c8359456)
+
 - **Pomodoro Timer**: Built-in Pomodoro timer to help boost productivity.
+  ![image](https://github.com/user-attachments/assets/f4102f39-866a-49a4-95f1-450de4dd40c0)
+
 - **User Account Creation**: Users can creat accounts to save their data across different machines and browsers.
 - **User Sessions**: Makes use of sessions for that users do not require an account to keep their changes on one machine between sessions.
 - **Email management**: Makes use of email servers and APIs to send users password reset emails.
