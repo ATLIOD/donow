@@ -189,7 +189,7 @@ func loginUser(w http.ResponseWriter, email string, password string, db *pgxpool
 		Name:     "session_token",
 		Value:    sessionToken,
 		HttpOnly: true,
-		//       Secure:   true,        // Only send over HTTPS
+		Secure:   true,        // Only send over HTTPS
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 		MaxAge:   3600 * 24, // 24 hours
@@ -233,7 +233,7 @@ func createTemporaryUser(w http.ResponseWriter, db *pgxpool.Pool) (string, error
 		Name:     "session_token",
 		Value:    sessionToken,
 		HttpOnly: true,
-		//       Secure:   true,        // Only send over HTTPS
+		Secure:   true,        // Only send over HTTPS
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 		MaxAge:   3600 * 24 * 7, // 7 days
@@ -243,7 +243,7 @@ func createTemporaryUser(w http.ResponseWriter, db *pgxpool.Pool) (string, error
 		Name:     "csrf_token",
 		Value:    csrfToken,
 		HttpOnly: false, // Needs to be accessible by JavaScript
-		//	Secure:   true,
+		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 		MaxAge:   3600 * 24 * 7,
@@ -510,7 +510,9 @@ func setOTP(email string, otp string, db *pgxpool.Pool) error {
 }
 
 func sendOTP(email string, otp string) error {
-	log.Println("api key: ", os.Getenv("SENDGRID_API_KEY"))
+
+	api_key := os.Getenv("SENDGRID_API_KEY")
+
 	// Sender email
 	from := mail.NewEmail("Donow Support", "donotreply@donow.it.com")
 	subject := "Password Reset Code"
@@ -526,7 +528,7 @@ func sendOTP(email string, otp string) error {
 	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
 
 	// SendGrid client
-	client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
+	client := sendgrid.NewSendClient(api_key)
 	response, err := client.Send(message)
 
 	if err != nil {

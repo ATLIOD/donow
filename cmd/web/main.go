@@ -45,7 +45,7 @@ func main() {
 	// Load environment variables
 	if os.Getenv("APP_ENV") != "production" {
 		if err := godotenv.Load(); err !=nil{
-			log.Println("No .env fie found, continuin..")
+			log.Println("No .env file found, continuing..")
 		}
 	}
 	log.Println("environment: ", os.Getenv("APP_ENV"))
