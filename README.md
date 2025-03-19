@@ -23,6 +23,7 @@ do now is a task management web app built with **Go**, **HTMX**, **AlpineJS** an
 - **AlpineJS**: A lightweight JavaScript framework used for enhancing front-end interactivity in the timer.
 - **PostgreSQL**: Used for persistent data storage, including user and task information.
 - **Docker**: The app is packaged with Docker, making it easy to deploy server-side.
+- **Caddy**: The deployment server makes use of caddy to handle reverse proxying, TLS certificates, and HTTPS.
 
 ## Accessing the Website
 
