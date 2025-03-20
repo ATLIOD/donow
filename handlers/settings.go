@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"donow/models"
 	"donow/utils"
 	"fmt"
 	"log"
@@ -12,13 +13,6 @@ import (
 )
 
 func SettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	type TimerData struct {
-		Study      int
-		ShortBreak int
-		LongBreak  int
-		IsLoggedIn bool
-	}
-
 	if !utils.CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
 		_, err := utils.CreateTemporaryUser(w, db)
@@ -41,7 +35,7 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		log.Println("error getting times: ", err)
 	}
 
-	data := TimerData{
+	data := models.TimerData{
 		Study:      studyTime,
 		ShortBreak: shortTime,
 		LongBreak:  longTime,
@@ -62,11 +56,11 @@ func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 		return
 	}
 
-	studyTime, err1 := strconv.Atoi(r.FormValue("study_time"))
-	shortTime, err2 := strconv.Atoi(r.FormValue("short_time"))
-	longTime, err3 := strconv.Atoi(r.FormValue("long_time"))
+	studyTime, errStudy := strconv.Atoi(r.FormValue("study_time"))
+	shortTime, errShort := strconv.Atoi(r.FormValue("short_time"))
+	longTime, errLong := strconv.Atoi(r.FormValue("long_time"))
 
-	if err1 != nil || err2 != nil || err3 != nil || studyTime <= 0 || shortTime <= 0 || longTime <= 0 {
+	if errStudy != nil || errShort != nil || errLong != nil || studyTime <= 0 || shortTime <= 0 || longTime <= 0 {
 		fmt.Fprintf(w, "<p style='color: red;'>Error: All values must be positive integers greater than 0.</p>")
 		return
 	}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"donow/models"
 	"donow/utils"
 	"fmt"
 	"log"
@@ -11,13 +12,6 @@ import (
 )
 
 func Timer(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	type TimerData struct {
-		Study      int
-		ShortBreak int
-		LongBreak  int
-		IsLoggedIn bool
-	}
-
 	if !utils.CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
 		_, err := utils.CreateTemporaryUser(w, db)
@@ -40,7 +34,7 @@ func Timer(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		log.Println("error getting times: ", err)
 	}
 
-	data := TimerData{
+	data := models.TimerData{
 		Study:      studyTime,
 		ShortBreak: shortTime,
 		LongBreak:  longTime,
