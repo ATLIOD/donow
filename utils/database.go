@@ -1,0 +1,112 @@
+package utils
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+func TokenExists(sessionToken string, db *pgxpool.Pool) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	var token string
+	stmt := "SELECT sessiontoken FROM users WHERE sessiontoken = $1;"
+	err := db.QueryRow(ctx, stmt, sessionToken).Scan(&token)
+	return err == nil
+}
+
+func GetCSRFFromST(sessionToken string, db *pgxpool.Pool) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	stmt := "SELECT csrftoken FROM users WHERE sessiontoken = $1;"
+	row := db.QueryRow(ctx, stmt, sessionToken)
+	var csrfToken string
+	err := row.Scan(&csrfToken)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return "", errors.New("no user found with this session token")
+		}
+		return "", fmt.Errorf("unable to retrieve csrf token from ST: %w", err)
+	}
+
+	return csrfToken, err
+}
+
+func GetUserIDFromToken(sessionToken string, db *pgxpool.Pool) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	var userID string
+	getUserIDstmt := "SELECT id FROM users WHERE sessiontoken = $1;"
+	row := db.QueryRow(ctx, getUserIDstmt, sessionToken)
+	err := row.Scan(&userID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return "", errors.New("no user found with this session token")
+		}
+		return "", fmt.Errorf("no user id found: %w", err)
+	}
+	return userID, nil
+}
+
+func GetCRSFFromID(userID string, db *pgxpool.Pool) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	stmt := "SELECT csrftoken FROM users WHERE id = $1;"
+	row := db.QueryRow(ctx, stmt, userID)
+	var csrfToken string
+	err := row.Scan(&csrfToken)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return "", errors.New("no user found with this id")
+		}
+		return "", fmt.Errorf("unable to retrieve csrf token from id: %w", err)
+	}
+
+	return csrfToken, err
+}
+
+func AccountExists(r *http.Request, db *pgxpool.Pool) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	// get session from token
+	st, err := r.Cookie("session_token")
+	if err != nil {
+		return false, errors.New("unable to retrieve token")
+	} else if err == http.ErrNoCookie {
+		return false, errors.New("no cookie")
+	}
+	var email bool
+	getEmailstmt := "SELECT is_temporary FROM users WHERE sessiontoken = $1;"
+	row := db.QueryRow(ctx, getEmailstmt, st.Value)
+	err = row.Scan(&email)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return false, errors.New("no user found with this session token")
+		}
+		return false, fmt.Errorf("no user token found: %w", err)
+	}
+	return !email, nil
+}
+
+func EmailInUse(email string, db *pgxpool.Pool) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	stmt := "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)"
+
+	var exists bool
+
+	// Execute the query with the email parameter
+	err := db.QueryRow(ctx, stmt, email).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("database error checking email: %w", err)
+	}
+
+	return exists, nil
+}

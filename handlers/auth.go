@@ -1,13 +1,11 @@
-package main
+package handlers
 
 import (
 	"context"
-	"donow/models"
+	"donow/utils"
 	"fmt"
 	"log"
 	"net/http"
-	"path"
-	"strconv"
 	"text/template"
 	"time"
 
@@ -15,180 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	// Parse template early to catch any template errors
-	tmpl, err := template.ParseFiles("./ui/html/tasks.html")
-	if err != nil {
-		log.Println("Error loading template:", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	// Handle session management
-	var userID string
-
-	if !cookieExists(r, "session_token") {
-		log.Println("No session found, creating temporary user")
-		var tempID string
-		tempID, err = createTemporaryUser(w, db)
-		if err != nil {
-			log.Println("Error creating temporary user:", err)
-			http.Error(w, "Failed to create session", http.StatusInternalServerError)
-			return
-		}
-		userID = tempID
-	} else {
-		// Get session token from cookie
-		st, err := r.Cookie("session_token")
-		if err != nil || st == nil || st.Value == "" {
-			log.Println("Unable to retrieve valid session token:", err)
-			return
-		}
-
-		// Get user ID fromi token
-		userID, err = getUserIDFromToken(st.Value, db)
-		if err != nil {
-			log.Println("Error getting user ID from token:", err)
-			return
-		}
-	}
-
-	csrfToken, err := getCRSFFromID(userID, db)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			log.Println("no user found with this csrf token")
-		}
-		log.Println("error occured: ", err)
-	}
-
-	var toDo, inProgress, completed []models.Task
-	toDo, inProgress, completed, err = getTasks(userID, db)
-	if err != nil {
-		log.Println("Error retriving tasks for user:", userID, ": ", err)
-	}
-
-	loggedIN, err := accountExists(r, db)
-	if err != nil {
-		fmt.Println("error checking if logged in: ", err)
-	}
-
-	// Render template with categorized tasks
-	data := models.PageData{
-		Todo:       toDo,
-		InProgress: inProgress,
-		Complete:   completed,
-		CSRFtoken:  csrfToken,
-		IsLoggedIn: loggedIN,
-	}
-
-	err = tmpl.Execute(w, data)
-	if err != nil {
-		log.Println("Error rendering template:", err)
-		http.Error(w, "Error displaying tasks", http.StatusInternalServerError)
-	}
-}
-
-// handler displays template for adding tasks
-func addTaskForm(w http.ResponseWriter) {
-	tmpl, err := template.ParseFiles("./ui/html/add-task-form.html")
-	if err != nil {
-		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = tmpl.Execute(w, nil)
-	if err != nil {
-		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
-	}
-}
-
-// handler receieved post methods for adding tasks and parses them to be addedd to the database
-func addTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	if r.Method == http.MethodPost {
-		Formtitle := r.FormValue("title")
-		Formstage := r.FormValue("stage")
-		task := models.Task{Title: Formtitle, Stage: Formstage}
-		err := validateTaskInput(task.Title)
-		if err != nil {
-			log.Println("error with task title ", err)
-			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprintf(w, "task title must be between 1-255 characters and cannot contain <>\"'")
-			return
-		}
-
-		// Save the task to the database
-		saveToDatabase(task, db, r)
-
-		w.Header().Set("HX-Redirect", "/")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "Task added successfully!")
-	}
-}
-
-func deleteTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	if r.Method == http.MethodDelete {
-		taskID := path.Base(r.URL.Path)
-		log.Println("Extracted Task ID:", taskID) // Debugging
-
-		if taskID == "" {
-			log.Println("Error: Missing task ID")
-			http.Error(w, "Missing task ID", http.StatusBadRequest)
-			return
-		}
-
-		t, err := strconv.Atoi(taskID)
-		if err != nil {
-			log.Println("Invalid task ID:", taskID)
-			http.Error(w, "Invalid task ID", http.StatusBadRequest)
-			return
-		}
-
-		err = deleteTask(t, db)
-		if err != nil {
-			log.Println("Error deleting task:", err)
-			http.Error(w, "Failed to delete task", http.StatusInternalServerError)
-			return // ⬅ Return here to prevent WriteHeader(200)
-		}
-
-		w.WriteHeader(http.StatusOK) // ⬅ Only happens if everything was successful
-	}
-}
-
-func moveTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	if r.Method != http.MethodPatch {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	taskID := path.Base(r.URL.Path) // Extract task ID from URL
-	if taskID == "" {
-		http.Error(w, "Missing task ID", http.StatusBadRequest)
-		return
-	}
-
-	err := r.ParseForm() // Parse form data
-	if err != nil {
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
-		return
-	}
-
-	stage := r.FormValue("stage") // Get new stage from request body
-	if stage == "" {
-		http.Error(w, "Missing stage value", http.StatusBadRequest)
-		return
-	}
-
-	err = moveTask(taskID, stage, db)
-	if err != nil {
-		log.Println("error moving task:", err)
-		http.Error(w, "Failed to delete task", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("HX-Redirect", "/")
-	w.WriteHeader(http.StatusOK)
-}
-
-func loginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func LoginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	tmpl, err := template.ParseFiles("./ui/html/login-form.html")
 	if err != nil {
 		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
@@ -196,10 +21,10 @@ func loginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) 
 	}
 	var userID string
 
-	if !cookieExists(r, "session_token") {
+	if !utils.CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
 		var tempID string
-		tempID, err = createTemporaryUser(w, db)
+		tempID, err = utils.CreateTemporaryUser(w, db)
 		if err != nil {
 			log.Println("Error creating temporary user:", err)
 			http.Error(w, "Failed to create session", http.StatusInternalServerError)
@@ -215,14 +40,14 @@ func loginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) 
 		}
 
 		// Get user ID from token
-		userID, err = getUserIDFromToken(st.Value, db)
+		userID, err = utils.GetUserIDFromToken(st.Value, db)
 		if err != nil {
 			log.Println("Error getting user ID from token:", err)
 			return
 		}
 	}
 
-	csrfToken, err := getCRSFFromID(userID, db)
+	csrfToken, err := utils.GetCRSFFromID(userID, db)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.Println("no user found with this csrf token")
@@ -244,7 +69,7 @@ func loginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) 
 	}
 }
 
-func loginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func LoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -258,7 +83,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		return
 	}
 
-	err := loginUser(w, email, password, db)
+	err := utils.LoginUser(w, email, password, db)
 	if err != nil {
 		log.Println("Login failed: ", err)
 		if err.Error() == "invalid credentials" {
@@ -281,7 +106,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func SignUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	tmpl, err := template.ParseFiles("./ui/html/signup-form.html")
 	if err != nil {
 		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
@@ -289,10 +114,10 @@ func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	}
 	var userID string
 
-	if !cookieExists(r, "session_token") {
+	if !utils.CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
 		var tempID string
-		tempID, err = createTemporaryUser(w, db)
+		tempID, err = utils.CreateTemporaryUser(w, db)
 		if err != nil {
 			log.Println("Error creating temporary user:", err)
 			http.Error(w, "Failed to create session", http.StatusInternalServerError)
@@ -308,14 +133,14 @@ func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		}
 
 		// Get user ID from token
-		userID, err = getUserIDFromToken(st.Value, db)
+		userID, err = utils.GetUserIDFromToken(st.Value, db)
 		if err != nil {
 			log.Println("Error getting user ID from token:", err)
 			return
 		}
 	}
 
-	csrfToken, err := getCRSFFromID(userID, db)
+	csrfToken, err := utils.GetCRSFFromID(userID, db)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.Println("no user found with this csrf token")
@@ -336,34 +161,34 @@ func signUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	}
 }
 
-func registerUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func RegisterUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	if r.Method == http.MethodPost {
 		email := r.FormValue("email")
 		password := r.FormValue("password")
 		confirmedPassword := r.FormValue("confirm-password")
 
-		err := validateEmail(email)
+		err := utils.ValidateEmail(email)
 		if err != nil {
 			log.Println("invalid email: ", err)
 			w.Header().Set("Content-Type", "text/html")
 			fmt.Fprintf(w, "invalid email address")
 			return
 		}
-		err = validatePassword(password)
+		err = utils.ValidatePassword(password)
 		if err != nil {
 			log.Println("invalid password: ", err)
 			w.Header().Set("Content-Type", "text/html")
 			fmt.Fprintf(w, "Passwords must be at least 8 characters in length and contain: one uppercase letter, one lowercase letter, one special character, one digit")
 			return
 		}
-		if !samePassword(password, confirmedPassword) {
+		if !utils.SamePassword(password, confirmedPassword) {
 			log.Println("passwords must match: ", err)
 			w.Header().Set("Content-Type", "text/html")
 			fmt.Fprintf(w, "passwords must match")
 			return
 		}
 
-		inUse, err := emailInUse(email, db)
+		inUse, err := utils.EmailInUse(email, db)
 		if err != nil {
 			log.Printf("Error checking email: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -377,7 +202,7 @@ func registerUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 			return
 		}
 		// Save the task to the database
-		err = addUser(email, password, db, r)
+		err = utils.AddUser(email, password, db, r)
 		if err != nil {
 			log.Println("add user error: ", err, " user: ", email)
 			w.Header().Set("Content-Type", "text/html")
@@ -392,7 +217,7 @@ func registerUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 	}
 }
 
-func logOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func LogOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	st, err := r.Cookie("session_token")
@@ -403,7 +228,7 @@ func logOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		log.Println("token does not exist")
 	} else {
 		// get user id from token
-		userID, err := getUserIDFromToken(st.Value, db)
+		userID, err := utils.GetUserIDFromToken(st.Value, db)
 		if err != nil {
 			log.Println("error getting user ID from token")
 			// return err
@@ -443,7 +268,7 @@ func logOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-func resetPasswordRequestForm(w http.ResponseWriter, r *http.Request) {
+func ResetPasswordRequestForm(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles("./ui/html/reset-password-request.html")
 	if err != nil {
 		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
@@ -455,9 +280,9 @@ func resetPasswordRequestForm(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func resetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func ResetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	email := r.FormValue("email")
-	exists, err := emailInUse(email, db)
+	exists, err := utils.EmailInUse(email, db)
 	if !exists {
 		w.Header().Set("HX-Redirect", "/forgot-password/validate-user")
 		w.WriteHeader(http.StatusOK)
@@ -469,9 +294,9 @@ func resetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgx
 		fmt.Fprintf(w, "internal error. please try again")
 		return
 	}
-	if !cookieExists(r, "session_token") {
+	if !utils.CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
-		_, err := createTemporaryUser(w, db)
+		_, err := utils.CreateTemporaryUser(w, db)
 		if err != nil {
 			log.Println("Error creating temporary user:", err)
 			http.Error(w, "Failed to create session", http.StatusInternalServerError)
@@ -479,8 +304,8 @@ func resetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgx
 		}
 	}
 
-	otp := generateOTP()
-	err = setOTP(email, otp, db)
+	otp := utils.GenerateOTP()
+	err = utils.SetOTP(email, otp, db)
 	if err != nil {
 		log.Println("erorr setting otp for user: ", email, " |error:", err)
 		w.Header().Set("Content-Type", "text/html")
@@ -488,7 +313,7 @@ func resetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgx
 		return
 	}
 
-	err = sendOTP(email, otp)
+	err = utils.SendOTP(email, otp)
 	if err != nil {
 		log.Println("error seding password reset email to user: ", email, " |error:", err)
 		w.Header().Set("Content-Type", "text/html")
@@ -510,7 +335,7 @@ func resetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgx
 	w.WriteHeader(http.StatusOK)
 }
 
-func temporaryLoginForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func TemporaryLoginForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	cookie, err := r.Cookie("reset_email")
 	var email string
 	if err == nil {
@@ -529,7 +354,7 @@ func temporaryLoginForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool
 		return
 
 	}
-	csrfToken, err := getCSRFFromST(st.Value, db)
+	csrfToken, err := utils.GetCSRFFromST(st.Value, db)
 	if err != nil || st.Value == "" {
 		log.Println("unable to retrieve csrf token:", err, "user: ", email)
 		w.Header().Set("Content-Type", "text/html")
@@ -554,15 +379,15 @@ func temporaryLoginForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool
 	}
 }
 
-func temporaryLoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	err := authorize(r, db)
+func TemporaryLoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	err := utils.Authorize(r, db)
 	if err != nil {
 		log.Println("Authorization failed:", err)
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprintf(w, "internal error. Please try agian.")
 		return
 	}
-	err = authorize(r, db)
+	err = utils.Authorize(r, db)
 	if err != nil {
 		log.Println("Authorization failed:", err)
 		w.Header().Set("Content-Type", "text/html")
@@ -576,7 +401,7 @@ func temporaryLoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 	tempPassword := r.FormValue("one_time_password")
 
 	log.Println("checking if matches")
-	matches, err := isTempPasswordCorrect(tempPassword, email, db)
+	matches, err := utils.IsTempPasswordCorrect(tempPassword, email, db)
 	if err != nil {
 		log.Println("user OTP is incorrect: ", email, " |error:", err)
 		if err.Error() == "invalid credentials" {
@@ -602,7 +427,7 @@ func temporaryLoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 	}
 }
 
-func changePasswordForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func ChangePasswordForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	cookie, err := r.Cookie("reset_email")
 	email := ""
 	if err == nil {
@@ -621,7 +446,7 @@ func changePasswordForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool
 		return
 
 	}
-	csrfToken, err := getCSRFFromST(st.Value, db)
+	csrfToken, err := utils.GetCSRFFromST(st.Value, db)
 	if err != nil || st.Value == "" {
 		log.Println("unable to retrieve csrf token:", err, "user: ", email)
 		w.Header().Set("Content-Type", "text/html")
@@ -646,8 +471,8 @@ func changePasswordForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool
 	}
 }
 
-func changePasswordHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	err := authorize(r, db)
+func ChangePasswordHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	err := utils.Authorize(r, db)
 	if err != nil {
 		log.Println("Authorization failed:", err)
 		w.Header().Set("Content-Type", "text/html")
@@ -659,7 +484,7 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 	password := r.FormValue("password")
 	confirmedPassword := r.FormValue("confirm-password")
 
-	err = validatePassword(password)
+	err = utils.ValidatePassword(password)
 	if err != nil {
 		log.Println("invalid password: ", err)
 		w.Header().Set("Content-Type", "text/html")
@@ -667,14 +492,14 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 		return
 	}
 
-	if !samePassword(password, confirmedPassword) {
+	if !utils.SamePassword(password, confirmedPassword) {
 		log.Println("passwords must match: ", email)
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprintf(w, "passwords must match")
 		return
 	}
 
-	err = changePassword(email, password, db)
+	err = utils.ChangePassword(email, password, db)
 	if err != nil {
 		log.Println("erorr changing password for user: ", email, " |error:", err)
 		w.Header().Set("Content-Type", "text/html")
@@ -683,124 +508,4 @@ func changePasswordHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 	}
 	w.Header().Set("HX-Redirect", "/login")
 	w.WriteHeader(http.StatusOK)
-}
-
-func timer(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	type TimerData struct {
-		Study      int
-		ShortBreak int
-		LongBreak  int
-		IsLoggedIn bool
-	}
-
-	if !cookieExists(r, "session_token") {
-		log.Println("No session found, creating temporary user")
-		_, err := createTemporaryUser(w, db)
-		if err != nil {
-			log.Println("Error creating temporary user:", err)
-			http.Error(w, "Failed to create session", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	loggedIN, err := accountExists(r, db)
-	if err != nil {
-		fmt.Println("error checking if logged in: ", err)
-	}
-
-	st, _ := r.Cookie("session_token")
-
-	studyTime, shortTime, longTime, err := getTimes(st.Value, db)
-	if err != nil {
-		log.Println("error getting times: ", err)
-	}
-
-	data := TimerData{
-		Study:      studyTime,
-		ShortBreak: shortTime,
-		LongBreak:  longTime,
-		IsLoggedIn: loggedIN,
-	}
-	tmpl, err := template.ParseFiles("./ui/html/timer.html")
-	if err != nil {
-		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	err = tmpl.Execute(w, data)
-	if err != nil {
-		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func settingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	type TimerData struct {
-		Study      int
-		ShortBreak int
-		LongBreak  int
-		IsLoggedIn bool
-	}
-
-	if !cookieExists(r, "session_token") {
-		log.Println("No session found, creating temporary user")
-		_, err := createTemporaryUser(w, db)
-		if err != nil {
-			log.Println("Error creating temporary user:", err)
-			http.Error(w, "Failed to create session", http.StatusInternalServerError)
-			return
-		}
-	}
-
-	loggedIN, err := accountExists(r, db)
-	if err != nil {
-		fmt.Println("error checking if logged in: ", err)
-	}
-
-	st, _ := r.Cookie("session_token")
-
-	studyTime, shortTime, longTime, err := getTimes(st.Value, db)
-	if err != nil {
-		log.Println("error getting times: ", err)
-	}
-
-	data := TimerData{
-		Study:      studyTime,
-		ShortBreak: shortTime,
-		LongBreak:  longTime,
-		IsLoggedIn: loggedIN,
-	}
-
-	tmpl, err := template.ParseFiles("./ui/html/settings.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
-	tmpl.Execute(w, data)
-}
-
-func updateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Invalid form data", http.StatusBadRequest)
-		return
-	}
-
-	studyTime, err1 := strconv.Atoi(r.FormValue("study_time"))
-	shortTime, err2 := strconv.Atoi(r.FormValue("short_time"))
-	longTime, err3 := strconv.Atoi(r.FormValue("long_time"))
-
-	if err1 != nil || err2 != nil || err3 != nil || studyTime <= 0 || shortTime <= 0 || longTime <= 0 {
-		fmt.Fprintf(w, "<p style='color: red;'>Error: All values must be positive integers greater than 0.</p>")
-		return
-	}
-
-	st, _ := r.Cookie("session_token")
-
-	err := updateSettings(st.Value, studyTime, shortTime, longTime, db)
-	if err != nil {
-		log.Println("Database update error:", err)
-		fmt.Fprintf(w, "<p style='color: red;'>Error updating settings.</p>")
-		return
-	}
-
-	// Return an HTMX response (updates the #messages div)
-	fmt.Fprintf(w, "<p style='color: green;'>Settings updated successfully!</p>")
 }

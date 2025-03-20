@@ -1,0 +1,188 @@
+package handlers
+
+import (
+	"donow/models"
+	"donow/utils"
+	"fmt"
+	"log"
+	"net/http"
+	"path"
+	"strconv"
+	"text/template"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	// Parse template early to catch any template errors
+	tmpl, err := template.ParseFiles("./ui/html/tasks.html")
+	if err != nil {
+		log.Println("Error loading template:", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Handle session management
+	var userID string
+
+	if !utils.CookieExists(r, "session_token") {
+		log.Println("No session found, creating temporary user")
+		var tempID string
+		tempID, err = utils.CreateTemporaryUser(w, db)
+		if err != nil {
+			log.Println("Error creating temporary user:", err)
+			http.Error(w, "Failed to create session", http.StatusInternalServerError)
+			return
+		}
+		userID = tempID
+	} else {
+		// Get session token from cookie
+		st, err := r.Cookie("session_token")
+		if err != nil || st == nil || st.Value == "" {
+			log.Println("Unable to retrieve valid session token:", err)
+			return
+		}
+
+		// Get user ID fromi token
+		userID, err = utils.GetUserIDFromToken(st.Value, db)
+		if err != nil {
+			log.Println("Error getting user ID from token:", err)
+			return
+		}
+	}
+
+	csrfToken, err := utils.GetCRSFFromID(userID, db)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			log.Println("no user found with this csrf token")
+		}
+		log.Println("error occured: ", err)
+	}
+
+	var toDo, inProgress, completed []models.Task
+	toDo, inProgress, completed, err = utils.GetTasks(userID, db)
+	if err != nil {
+		log.Println("Error retriving tasks for user:", userID, ": ", err)
+	}
+
+	loggedIN, err := utils.AccountExists(r, db)
+	if err != nil {
+		fmt.Println("error checking if logged in: ", err)
+	}
+
+	// Render template with categorized tasks
+	data := models.PageData{
+		Todo:       toDo,
+		InProgress: inProgress,
+		Complete:   completed,
+		CSRFtoken:  csrfToken,
+		IsLoggedIn: loggedIN,
+	}
+
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		log.Println("Error rendering template:", err)
+		http.Error(w, "Error displaying tasks", http.StatusInternalServerError)
+	}
+}
+
+// handler displays template for adding tasks
+func AddTaskForm(w http.ResponseWriter) {
+	tmpl, err := template.ParseFiles("./ui/html/add-task-form.html")
+	if err != nil {
+		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = tmpl.Execute(w, nil)
+	if err != nil {
+		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// handler receieved post methods for adding tasks and parses them to be addedd to the database
+func AddTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	if r.Method == http.MethodPost {
+		Formtitle := r.FormValue("title")
+		Formstage := r.FormValue("stage")
+		task := models.Task{Title: Formtitle, Stage: Formstage}
+		err := utils.ValidateTaskInput(task.Title)
+		if err != nil {
+			log.Println("error with task title ", err)
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, "task title must be between 1-255 characters and cannot contain <>\"'")
+			return
+		}
+
+		// Save the task to the database
+		utils.SaveToDatabase(task, db, r)
+
+		w.Header().Set("HX-Redirect", "/")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "Task added successfully!")
+	}
+}
+
+func DeleteTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	if r.Method == http.MethodDelete {
+		taskID := path.Base(r.URL.Path)
+		log.Println("Extracted Task ID:", taskID) // Debugging
+
+		if taskID == "" {
+			log.Println("Error: Missing task ID")
+			http.Error(w, "Missing task ID", http.StatusBadRequest)
+			return
+		}
+
+		t, err := strconv.Atoi(taskID)
+		if err != nil {
+			log.Println("Invalid task ID:", taskID)
+			http.Error(w, "Invalid task ID", http.StatusBadRequest)
+			return
+		}
+
+		err = utils.DeleteTask(t, db)
+		if err != nil {
+			log.Println("Error deleting task:", err)
+			http.Error(w, "Failed to delete task", http.StatusInternalServerError)
+			return // ⬅ Return here to prevent WriteHeader(200)
+		}
+
+		w.WriteHeader(http.StatusOK) // ⬅ Only happens if everything was successful
+	}
+}
+
+func MoveTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+	if r.Method != http.MethodPatch {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	taskID := path.Base(r.URL.Path) // Extract task ID from URL
+	if taskID == "" {
+		http.Error(w, "Missing task ID", http.StatusBadRequest)
+		return
+	}
+
+	err := r.ParseForm() // Parse form data
+	if err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	stage := r.FormValue("stage") // Get new stage from request body
+	if stage == "" {
+		http.Error(w, "Missing stage value", http.StatusBadRequest)
+		return
+	}
+
+	err = utils.MoveTask(taskID, stage, db)
+	if err != nil {
+		log.Println("error moving task:", err)
+		http.Error(w, "Failed to delete task", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("HX-Redirect", "/")
+	w.WriteHeader(http.StatusOK)
+}
