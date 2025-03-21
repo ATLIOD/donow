@@ -11,6 +11,33 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+func OpenDB(dsn string) (*pgxpool.Pool, error) {
+	// Parse the connection string into a pgxpool.Config
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		fmt.Printf("Error parsing DSN: %v\n", err)
+		return nil, err
+	}
+
+	config.MaxConns = 2000
+	config.MaxConnIdleTime = 30 * time.Minute
+	config.MinConns = 10
+
+	pool, err := pgxpool.New(context.Background(), dsn)
+	if err != nil {
+		fmt.Printf("Unable to create connection pool: %v\n", err)
+		return nil, err
+	}
+
+	// Test the connection
+	err = pool.Ping(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	return pool, nil
+}
+
 func TokenExists(sessionToken string, db *pgxpool.Pool) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

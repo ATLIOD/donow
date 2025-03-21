@@ -1,46 +1,16 @@
 package main
 
 import (
-	"context"
 	"donow/handlers"
+	"donow/utils"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 )
-
-func openDB(dsn string) (*pgxpool.Pool, error) {
-	// Parse the connection string into a pgxpool.Config
-	config, err := pgxpool.ParseConfig(dsn)
-	if err != nil {
-		fmt.Printf("Error parsing DSN: %v\n", err)
-		return nil, err
-	}
-
-	config.MaxConns = 2000
-	config.MaxConnIdleTime = 30 * time.Minute
-	config.MinConns = 10
-
-	pool, err := pgxpool.New(context.Background(), dsn)
-	if err != nil {
-		fmt.Printf("Unable to create connection pool: %v\n", err)
-		return nil, err
-	}
-
-	// Test the connection
-	err = pool.Ping(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	return pool, nil
-}
 
 func main() {
 	// Load environment variables
@@ -60,14 +30,21 @@ func main() {
 	// 	os.Getenv("DB_NAME"),
 	// 	os.Getenv("DB_SSLMODE"),
 	// )
-	dsn := os.Getenv("DATABASE_URL")
+	pgDSN := os.Getenv("DATABASE_URL")
 
 	// Initialize the database connection pool
-	dbPool, err := openDB(dsn)
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+	dbPool, pgErr := utils.OpenDB(pgDSN)
+	if pgErr != nil {
+		log.Fatalf("Failed to connect to database: %v", pgErr)
 	}
 	defer dbPool.Close()
+
+	redisDSN := os.Getenv("REDIS_URL")
+	redisPool, rdErr := utils.OpenRedisPool(redisDSN)
+	if rdErr != nil {
+		log.Fatalf("Failed to connect to database: %v", rdErr)
+	}
+	defer redisPool.Close()
 
 	// Set up the HTTP server and handlers
 	mux := http.NewServeMux()
