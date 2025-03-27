@@ -18,7 +18,7 @@ func OpenRedisPool(dsn string) *redis.Client {
 	}
 
 	// Configure connection pooling
-	opt.PoolSize = 10                     // Maximum number of connections in the pool
+	opt.PoolSize = 2000                   // Maximum number of connections in the pool
 	opt.MinIdleConns = 2                  // Minimum number of idle connections
 	opt.DialTimeout = 5 * time.Second     // Timeout for new connections
 	opt.ConnMaxIdleTime = 5 * time.Minute // Close idle connections after this duration
@@ -35,7 +35,7 @@ func OpenRedisPool(dsn string) *redis.Client {
 func StoreSession(client *redis.Client, session models.Session, ttl time.Duration) error {
 	ctx := context.Background()
 
-	sessionMap := map[string]string{
+	sessionMap := map[string]any{
 		"user_id":       session.UserID,
 		"created_at":    session.CreatedAt,
 		"expires_at":    session.ExpiresAt,

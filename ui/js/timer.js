@@ -4,6 +4,7 @@ function timer(durationInMinutes) {
     expiry: null,
     remaining: 0,
     interval: null,
+    sound: new Audio("/static/sounds/notification.mp3"),
     
     init() {
       this.reset(durationInMinutes);
@@ -17,11 +18,13 @@ function timer(durationInMinutes) {
     },
 
     start() {
-      this.expiry = new Date().getTime() + this.remaining * 1000;
-      this.interval = setInterval(() => {
-        this.setRemaining();
-        if (this.remaining <= 0) clearInterval(this.interval);
-      }, 1000);
+        this.expiry = new Date().getTime() + this.remaining * 1000;
+        this.interval = setInterval(() => {
+            this.setRemaining();
+            if (this.remaining <= 0) {
+            this.onEnd();
+            }
+        }, 1000);
     },
 
     stop() {
@@ -33,6 +36,12 @@ function timer(durationInMinutes) {
       this.remaining = Math.max(0, Math.floor(diff / 1000));
     },
 
+onEnd() {
+  if (this.remaining === 0) {
+    this.sound.play(); // Play notification sound only once when timer reaches zero
+    this.stop(); // Ensure the timer completely stops
+  }
+}
     minutes() {
       return Math.floor(this.remaining / 60);
     },

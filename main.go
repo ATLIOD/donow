@@ -40,10 +40,7 @@ func main() {
 	defer dbPool.Close()
 
 	redisDSN := os.Getenv("REDIS_URL")
-	redisPool, rdErr := utils.OpenRedisPool(redisDSN)
-	if rdErr != nil {
-		log.Fatalf("Failed to connect to database: %v", rdErr)
-	}
+	redisPool := utils.OpenRedisPool(redisDSN)
 	defer redisPool.Close()
 
 	// Set up the HTTP server and handlers

@@ -1,9 +1,11 @@
+
 function timer(durationInMinutes) {
   return {
     expiry: null,
     remaining: 0,
     interval: null,
-
+    sound: new Audio("/static/sounds/notification.mp3"),
+    
     init() {
       this.reset(durationInMinutes);
     },
@@ -11,14 +13,19 @@ function timer(durationInMinutes) {
     reset(minutes) {
       this.stop(); // Ensure the timer stops before resetting
       this.expiry = new Date().getTime() + minutes * 60000;
-      this.remaining = minutes * 60;
+      this.setRemaining();
+      if (this.interval) clearInterval(this.interval);
     },
 
     start() {
       this.expiry = new Date().getTime() + this.remaining * 1000;
       this.interval = setInterval(() => {
         this.setRemaining();
-        if (this.remaining <= 0) this.stop();
+        if (this.remaining <= 0) {
+            this.onEnd();
+            this.stop();
+            this.reset(durationInMinutes);
+        }
       }, 1000);
     },
 
@@ -26,13 +33,13 @@ function timer(durationInMinutes) {
       clearInterval(this.interval);
     },
 
-    resume() {
-      this.start();
-    },
-
     setRemaining() {
       const diff = this.expiry - new Date().getTime();
       this.remaining = Math.max(0, Math.floor(diff / 1000));
+    },
+
+ onEnd() {
+      this.sound.play(); // Play notification sound
     },
 
     minutes() {
@@ -51,4 +58,12 @@ function timer(durationInMinutes) {
     },
   };
 }
+
+// document.addEventListener("DOMContentLoaded", () => {
+//   let timerInstance = Alpine.reactive(timer(studyTime));
+//
+//   document.getElementById("start").addEventListener("click", () => timerInstance.start());
+//   document.getElementById("stop").addEventListener("click", () => timerInstance.stop());
+//   document.getElementById("reset").addEventListener("click", () => timerInstance.init(studyTime));
+// });
 
