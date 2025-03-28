@@ -89,3 +89,19 @@ func UpdateLastActivity(client *redis.Client, sessionToken string) error {
 	ctx := context.Background()
 	return client.HSet(ctx, "session:"+sessionToken, "last_activity", time.Now().Format(time.RFC3339)).Err()
 }
+
+func AuthorizeSession(client *redis.Client, sessionToken string, csrfToken string) (string, error) {
+	ctx := context.Background()
+	key := "session:" + sessionToken
+
+	data, err := client.HGetAll(ctx, key).Result()
+	if err != nil || len(data) == 0 {
+		return "", fmt.Errorf("session not found")
+	}
+
+	if data["csrf_token"] != csrfToken {
+		return "", fmt.Errorf("invalid csrf token")
+	}
+
+	return data["user_id"], nil
+}
