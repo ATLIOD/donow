@@ -66,8 +66,14 @@ func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 	}
 
 	st, _ := r.Cookie("session_token")
+	// Get user ID fromi token
+	userID, err := utils.GetUserIDFromST(client, st.Value)
+	if err != nil {
+		log.Println("Error getting user ID from token:", err)
+		return
+	}
 
-	err := utils.UpdateSettings(st.Value, studyTime, shortTime, longTime, db)
+	err = utils.UpdateSettings(userID, studyTime, shortTime, longTime, db)
 	if err != nil {
 		log.Println("Database update error:", err)
 		fmt.Fprintf(w, "<p style='color: red;'>Error updating settings.</p>")

@@ -28,31 +28,28 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 
 	if !utils.CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
-		var tempID string
-		tempID, err = utils.CreateTemporaryUser(w, db)
+		_, err = utils.CreateTemporaryUser(w, db)
 		if err != nil {
 			log.Println("Error creating temporary user:", err)
 			http.Error(w, "Failed to create session", http.StatusInternalServerError)
 			return
 		}
-		userID = tempID
-	} else {
-		// Get session token from cookie
-		st, err := r.Cookie("session_token")
-		if err != nil || st == nil || st.Value == "" {
-			log.Println("Unable to retrieve valid session token:", err)
-			return
-		}
-
-		// Get user ID fromi token
-		userID, err = utils.GetUserIDFromToken(st.Value, db)
-		if err != nil {
-			log.Println("Error getting user ID from token:", err)
-			return
-		}
+	}
+	// Get session token from cookie
+	st, err := r.Cookie("session_token")
+	if err != nil || st == nil || st.Value == "" {
+		log.Println("Unable to retrieve valid session token:", err)
+		return
 	}
 
-	csrfToken, err := utils.GetCRSFFromID(userID, db)
+	// Get user ID fromi token
+	userID, err = utils.GetUserIDFromST(client, st.Value)
+	if err != nil {
+		log.Println("Error getting user ID from token:", err)
+		return
+	}
+
+	csrfToken, err := utils.GetCSRFFromST(client, st.Value)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.Println("no user found with this csrf token")

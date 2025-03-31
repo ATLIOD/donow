@@ -28,8 +28,14 @@ func Timer(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	}
 
 	st, _ := r.Cookie("session_token")
+	// Get user ID from token
+	userID, err := utils.GetUserIDFromST(client, st.Value)
+	if err != nil {
+		log.Println("Error getting user ID from token:", err)
+		return
+	}
 
-	studyTime, shortTime, longTime, err := utils.GetTimes(st.Value, db)
+	studyTime, shortTime, longTime, err := utils.GetTimes(userID, db)
 	if err != nil {
 		log.Println("error getting times: ", err)
 	}

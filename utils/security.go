@@ -12,22 +12,23 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func Authorize(r *http.Request, db *pgxpool.Pool) error {
+func Authorize(r *http.Request, db *pgxpool.Pool, client *redis.Client) error {
 	st, err := r.Cookie("session_token")
 	if err != nil || st.Value == "" {
 		return errors.New("unauthorized: missing or empty session token")
 	}
-	if !TokenExists(st.Value, db) {
+	if !ValidateSession(client, st.Value) {
 		return errors.New("unauthorized: invalid session token")
 	}
 
 	csrf := r.Header.Get("X-CSRF-Token")
-	expectedCSRF, err := GetCSRFFromST(st.Value, db)
+	expectedCSRF, err := GetCSRFFromST(client, st.Value)
 	if err != nil {
 		return errors.New("unauthorized: could not fetch csrf token")
 	}
@@ -141,17 +142,11 @@ func LoginUser(w http.ResponseWriter, email string, password string, db *pgxpool
 	})
 
 	// Update database with new tokens
-	stmt = "UPDATE users SET sessiontoken = $1, csrftoken = $2 WHERE email = $3 RETURNING id;"
-
-	var updatedID string
-	err := db.QueryRow(ctx, stmt, sessionToken, csrfToken, email).Scan(&updatedID)
+	// stmt = "UPDATE users SET sessiontoken = $1, csrftoken = $2 WHERE email = $3 RETURNING id;"
+	err := StoreSession(client, session, ttl)
 	if err != nil {
-		log.Printf("Failed to update tokens: %v", err)
+		log.Printf("Failed to session: %v", err)
 		return fmt.Errorf("login failed: %w", err)
-	}
-
-	if updatedID == "" {
-		return fmt.Errorf("no user updated")
 	}
 
 	log.Printf("Login successful for user: %s", email)

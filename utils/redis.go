@@ -105,3 +105,130 @@ func AuthorizeSession(client *redis.Client, sessionToken string, csrfToken strin
 
 	return data["user_id"], nil
 }
+
+// ValidateSession checks if a session exists and is not expired
+func ValidateSession(client *redis.Client, sessionToken string) (bool, error) {
+	ctx := context.Background()
+	key := "session:" + sessionToken
+
+	// Check if session exists
+	exists, err := client.Exists(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+	if exists == 0 {
+		return false, nil
+	}
+
+	// Get session data
+	data, err := client.HGetAll(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+
+	// Check expiration
+	expiresAt, err := time.Parse(time.RFC3339, data["expires_at"])
+	if err != nil {
+		return false, err
+	}
+
+	return time.Now().Before(expiresAt), nil
+}
+
+// CountUserSessions returns the number of active sessions for a specific user
+func CountUserSessions(client *redis.Client, userID string) (int64, error) {
+	ctx := context.Background()
+
+	// Use SCAN to find all session keys
+	var cursor uint64
+	var count int64
+
+	for {
+		keys, nextCursor, err := client.Scan(ctx, cursor, "session:*", 100).Result()
+		if err != nil {
+			return 0, err
+		}
+
+		// If no more keys to scan
+		if len(keys) == 0 {
+			break
+		}
+
+		// Check each session for the user
+		for _, key := range keys {
+			userIDFromSession, err := client.HGet(ctx, key, "user_id").Result()
+			if err != nil {
+				continue // Skip if we can't get user_id
+			}
+			if userIDFromSession == userID {
+				count++
+			}
+		}
+
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
+	}
+
+	return count, nil
+}
+
+// DeleteAllUserSessions removes all sessions associated with a specific user
+func DeleteAllUserSessions(client *redis.Client, userID string) error {
+	ctx := context.Background()
+
+	// Use SCAN to find all session keys
+	var cursor uint64
+	var keysToDelete []string
+
+	for {
+		keys, nextCursor, err := client.Scan(ctx, cursor, "session:*", 100).Result()
+		if err != nil {
+			return err
+		}
+
+		// If no more keys to scan
+		if len(keys) == 0 {
+			break
+		}
+
+		// Check each session for the user
+		for _, key := range keys {
+			userIDFromSession, err := client.HGet(ctx, key, "user_id").Result()
+			if err != nil {
+				continue // Skip if we can't get user_id
+			}
+			if userIDFromSession == userID {
+				keysToDelete = append(keysToDelete, key)
+			}
+		}
+
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
+	}
+
+	// Delete all found sessions in bulk
+	if len(keysToDelete) > 0 {
+		return client.Del(ctx, keysToDelete...).Err()
+	}
+
+	return nil
+}
+
+func GetCSRFFromST(client *redis.Client, sessionToken string) (string, error) {
+	ctx := context.Background()
+
+	csrfToken, err := client.HGet(ctx, "session:"+sessionToken, "csrf_token").Result()
+	if err != nil {
+		return "", fmt.Errorf("unable to retrieve csrf token from ST: %w", err)
+	}
+
+	return csrfToken, nil
+}
+
+func GetUserIDFromST(client *redis.Client, sessionToken string) (string, error) {
+	return uID, nil
+}

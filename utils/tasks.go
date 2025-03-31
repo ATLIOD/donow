@@ -31,7 +31,7 @@ func SaveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request) error {
 	}
 
 	// get user id from token
-	userID, err := GetUserIDFromToken(st.Value, db)
+	userID, err := GetUserIDFromST(client, st.Value)
 	if err != nil {
 		return err
 	}
