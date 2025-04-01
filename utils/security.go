@@ -23,8 +23,13 @@ func Authorize(r *http.Request, client *redis.Client) error {
 	if err != nil || st.Value == "" {
 		return errors.New("unauthorized: missing or empty session token")
 	}
-	if !ValidateSession(client, st.Value) {
-		return errors.New("unauthorized: invalid session token")
+	// Check if the session token exists in redis
+	exists, err := ValidateSession(client, st.Value)
+	if !exists {
+		return errors.New("unauthorized: session token does not exist")
+	}
+	if err != nil {
+		return errors.New("error: invalid session token")
 	}
 
 	csrf := r.Header.Get("X-CSRF-Token")
@@ -40,7 +45,7 @@ func Authorize(r *http.Request, client *redis.Client) error {
 	return nil
 }
 
-func AddUser(email string, password string, db *pgxpool.Pool, r *http.Request) error {
+func AddUser(email string, password string, db *pgxpool.Pool, r *http.Request, client *redis.Client) error {
 	passwordHash, err := HashPassword(password)
 	if err != nil {
 		log.Println("error hashing password", err)
@@ -63,7 +68,7 @@ func AddUser(email string, password string, db *pgxpool.Pool, r *http.Request) e
 			return errors.New("unable to retrieve token")
 		}
 		// authroize token and sessions and csrf token
-		err = Authorize(r, db)
+		err = Authorize(r, client)
 		if err != nil {
 			log.Println("Authorization failed:", err)
 			return err
@@ -91,7 +96,7 @@ func AddUser(email string, password string, db *pgxpool.Pool, r *http.Request) e
 	return nil
 }
 
-func LoginUser(w http.ResponseWriter, email string, password string, db *pgxpool.Pool) error {
+func LoginUser(w http.ResponseWriter, email string, password string, db *pgxpool.Pool, client *redis.Client) error {
 	// Add logging for debugging
 	log.Printf("Login attempt for email: %s", email)
 
@@ -143,7 +148,9 @@ func LoginUser(w http.ResponseWriter, email string, password string, db *pgxpool
 
 	// Update database with new tokens
 	// stmt = "UPDATE users SET sessiontoken = $1, csrftoken = $2 WHERE email = $3 RETURNING id;"
-	err := StoreSession(client, session, ttl)
+	//
+	//TODO: get all user categories for session store
+	err := StoreSession(client, session, 24*time.Hour)
 	if err != nil {
 		log.Printf("Failed to session: %v", err)
 		return fmt.Errorf("login failed: %w", err)
@@ -153,7 +160,7 @@ func LoginUser(w http.ResponseWriter, email string, password string, db *pgxpool
 	return nil
 }
 
-func CreateTemporaryUser(w http.ResponseWriter, db *pgxpool.Pool) (string, error) {
+func CreateTemporaryUser(w http.ResponseWriter, db *pgxpool.Pool, client *redis.Client) (string, error) {
 	// Generate tokens
 	sessionToken := GenerateToken(32)
 	csrfToken := GenerateToken(32)
@@ -179,23 +186,33 @@ func CreateTemporaryUser(w http.ResponseWriter, db *pgxpool.Pool) (string, error
 		MaxAge:   3600 * 24 * 7,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	// ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// defer cancel()
 
 	// Update database with new tokens
-	stmt := "INSERT INTO users(sessiontoken, csrftoken) VALUES( $1, $2) RETURNING id;"
-	log.Printf("Setting session cookie: %+v", sessionToken)
-	log.Printf("Setting CSRF cookie: %+v", csrfToken)
+	// stmt := "INSERT INTO users(sessiontoken, csrftoken) VALUES( $1, $2) RETURNING id;"
+	// log.Printf("Setting session cookie: %+v", sessionToken)
+	// log.Printf("Setting CSRF cookie: %+v", csrfToken)
+	//
+	//
+	// var updatedID string
+	// err := db.QueryRow(ctx, stmt, sessionToken, csrfToken).Scan(&updatedID)
+	// if err != nil {
+	// 	log.Printf("Failed to update tokens: %v", err)
+	// 	return "", fmt.Errorf("login failed: %w", err)
+	// }
+	// if updatedID == "" {
+	// 	log.Println("no user updated")
+	// }
 
-	var updatedID string
-	err := db.QueryRow(ctx, stmt, sessionToken, csrfToken).Scan(&updatedID)
+	// TODO: get all user categories for session store
+	// TODO: new logic for adding temp user to database
+	err := StoreSession(client, session, 24*time.Hour)
 	if err != nil {
-		log.Printf("Failed to update tokens: %v", err)
+		log.Printf("Failed to session: %v", err)
 		return "", fmt.Errorf("login failed: %w", err)
 	}
-	if updatedID == "" {
-		log.Println("no user updated")
-	}
+	updatedID, err := GetUserIDFromST(client, sessionToken)
 
 	return updatedID, nil
 }

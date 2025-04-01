@@ -51,7 +51,7 @@ func StoreSession(client *redis.Client, session models.Session, ttl time.Duratio
 	}
 
 	// Set expiration (e.g., 24 hours)
-	if err := client.Expire(ctx, "session:"+session.SessionToken, 24*time.Hour).Err(); err != nil {
+	if err := client.Expire(ctx, "session:"+session.SessionToken, ttl).Err(); err != nil {
 		return err
 	}
 
