@@ -50,8 +50,13 @@ func StoreSession(client *redis.Client, session models.Session, ttl time.Duratio
 		return err
 	}
 
-	// Set TTL for session expiration
-	return client.Expire(ctx, key, ttl).Err()
+	// Set expiration (e.g., 24 hours)
+	if err := client.Expire(ctx, "session:"+session.SessionToken, 24*time.Hour).Err(); err != nil {
+		return err
+	}
+
+	// Add to the user's session index
+	return client.SAdd(ctx, "user_sessions:"+session.UserID, "session:"+session.SessionToken).Err()
 }
 
 // GetSession retrieves session details from Redis
@@ -78,9 +83,22 @@ func GetSession(client *redis.Client, sessionToken string) (*models.Session, err
 	return session, nil
 }
 
-// DeleteSession removes a session from Redis
+// DeleteSession removes a single session and its reference in the user index
 func DeleteSession(client *redis.Client, sessionToken string) error {
 	ctx := context.Background()
+
+	// Get the user ID from the session
+	userID, err := client.HGet(ctx, "session:"+sessionToken, "user_id").Result()
+	if err != nil {
+		return err
+	}
+
+	// Remove from the user's session index
+	if err := client.SRem(ctx, "user_sessions:"+userID, "session:"+sessionToken).Err(); err != nil {
+		return err
+	}
+
+	// Delete the session
 	return client.Del(ctx, "session:"+sessionToken).Err()
 }
 
@@ -178,44 +196,22 @@ func CountUserSessions(client *redis.Client, userID string) (int64, error) {
 func DeleteAllUserSessions(client *redis.Client, userID string) error {
 	ctx := context.Background()
 
-	// Use SCAN to find all session keys
-	var cursor uint64
-	var keysToDelete []string
+	// Get all session keys for this user from the index
+	sessionKeys, err := client.SMembers(ctx, "user_sessions:"+userID).Result()
+	if err != nil {
+		return err
+	}
 
-	for {
-		keys, nextCursor, err := client.Scan(ctx, cursor, "session:*", 100).Result()
-		if err != nil {
+	// If there are sessions to delete
+	if len(sessionKeys) > 0 {
+		// Delete all the sessions
+		if err := client.Del(ctx, sessionKeys...).Err(); err != nil { //... unpacks slice into separate arguments
 			return err
 		}
-
-		// If no more keys to scan
-		if len(keys) == 0 {
-			break
-		}
-
-		// Check each session for the user
-		for _, key := range keys {
-			userIDFromSession, err := client.HGet(ctx, key, "user_id").Result()
-			if err != nil {
-				continue // Skip if we can't get user_id
-			}
-			if userIDFromSession == userID {
-				keysToDelete = append(keysToDelete, key)
-			}
-		}
-
-		cursor = nextCursor
-		if cursor == 0 {
-			break
-		}
 	}
 
-	// Delete all found sessions in bulk
-	if len(keysToDelete) > 0 {
-		return client.Del(ctx, keysToDelete...).Err()
-	}
-
-	return nil
+	// Clean up the index itself
+	return client.Del(ctx, "user_sessions:"+userID).Err()
 }
 
 func GetCSRFFromST(client *redis.Client, sessionToken string) (string, error) {
@@ -230,5 +226,12 @@ func GetCSRFFromST(client *redis.Client, sessionToken string) (string, error) {
 }
 
 func GetUserIDFromST(client *redis.Client, sessionToken string) (string, error) {
+	ctx := context.Background()
+	// Get the user ID from the session
+	uID, err := client.HGet(ctx, "session:"+sessionToken, "user_id").Result()
+	if err != nil {
+		return "", err
+	}
+
 	return uID, nil
 }

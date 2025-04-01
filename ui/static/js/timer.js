@@ -1,11 +1,10 @@
-
 function timer(durationInMinutes) {
   return {
     expiry: null,
     remaining: 0,
     interval: null,
     sound: new Audio("/static/sounds/notification.mp3"),
-    
+
     init() {
       this.reset(durationInMinutes);
     },
@@ -17,14 +16,16 @@ function timer(durationInMinutes) {
       if (this.interval) clearInterval(this.interval);
     },
 
+    // TODO: test this
     start() {
+      this.reset(durationInMinutes);
       this.expiry = new Date().getTime() + this.remaining * 1000;
       this.interval = setInterval(() => {
         this.setRemaining();
         if (this.remaining <= 0) {
-            this.onEnd();
-            this.stop();
-            this.reset(durationInMinutes);
+          this.onEnd();
+          this.stop();
+          this.reset(durationInMinutes);
         }
       }, 1000);
     },
@@ -38,7 +39,7 @@ function timer(durationInMinutes) {
       this.remaining = Math.max(0, Math.floor(diff / 1000));
     },
 
- onEnd() {
+    onEnd() {
       this.sound.play(); // Play notification sound
     },
 
@@ -66,4 +67,3 @@ function timer(durationInMinutes) {
 //   document.getElementById("stop").addEventListener("click", () => timerInstance.stop());
 //   document.getElementById("reset").addEventListener("click", () => timerInstance.init(studyTime));
 // });
-

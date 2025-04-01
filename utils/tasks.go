@@ -15,7 +15,7 @@ import (
 
 func SaveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request) error {
 	// authorize
-	err := Authorize(r, db)
+	err := Authorize(r, client)
 	if err != nil {
 		log.Println("Authorization failed:", err)
 		return err

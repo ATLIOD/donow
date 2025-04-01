@@ -18,7 +18,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func Authorize(r *http.Request, db *pgxpool.Pool, client *redis.Client) error {
+func Authorize(r *http.Request, client *redis.Client) error {
 	st, err := r.Cookie("session_token")
 	if err != nil || st.Value == "" {
 		return errors.New("unauthorized: missing or empty session token")
