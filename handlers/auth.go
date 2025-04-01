@@ -179,7 +179,7 @@ func RegisterUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 			fmt.Fprintf(w, "Email address is already registered")
 			return
 		}
-		// Save the task to the database
+		// Save the user to the database
 		err = utils.AddUser(email, password, db, r, redisClient)
 		if err != nil {
 			log.Println("add user error: ", err, " user: ", email)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 func OpenDB(dsn string) (*pgxpool.Pool, error) {
@@ -80,7 +81,7 @@ func OpenDB(dsn string) (*pgxpool.Pool, error) {
 // 	return csrfToken, err
 // }
 
-func AccountExists(r *http.Request, db *pgxpool.Pool) (bool, error) {
+func AccountExists(r *http.Request, db *pgxpool.Pool, client *redis.Client) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	// get session from token
@@ -90,9 +91,10 @@ func AccountExists(r *http.Request, db *pgxpool.Pool) (bool, error) {
 	} else if err == http.ErrNoCookie {
 		return false, errors.New("no cookie")
 	}
+	userID, _ := GetUserIDFromST(client, st.Value)
 	var email bool
-	getEmailstmt := "SELECT is_temporary FROM users WHERE sessiontoken = $1;"
-	row := db.QueryRow(ctx, getEmailstmt, st.Value)
+	getEmailstmt := "SELECT is_temporary FROM users WHERE user_id = $1;"
+	row := db.QueryRow(ctx, getEmailstmt, userID)
 	err = row.Scan(&email)
 	if err != nil {
 		if err == pgx.ErrNoRows {

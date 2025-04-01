@@ -52,13 +52,13 @@ func main() {
 
 	// HTTP handlers
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		handlers.Tasks(w, r, dbPool)
+		handlers.Tasks(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/add-task-form", func(w http.ResponseWriter, r *http.Request) {
 		handlers.AddTaskForm(w)
 	})
 	mux.HandleFunc("/addTask", func(w http.ResponseWriter, r *http.Request) {
-		handlers.AddTaskHandler(w, r, dbPool)
+		handlers.AddTaskHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/deleteTask/", func(w http.ResponseWriter, r *http.Request) {
 		handlers.DeleteTaskHandler(w, r, dbPool)
@@ -67,47 +67,47 @@ func main() {
 		handlers.MoveTaskHandler(w, r, dbPool)
 	})
 	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
-		handlers.LoginPageHandler(w, r, dbPool)
+		handlers.LoginPageHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/login-submit", func(w http.ResponseWriter, r *http.Request) {
-		handlers.LoginHandler(w, r, dbPool)
+		handlers.LoginHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/signUp", func(w http.ResponseWriter, r *http.Request) {
-		handlers.SignUpHandler(w, r, dbPool)
+		handlers.SignUpHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
-		handlers.RegisterUserHandler(w, r, dbPool)
+		handlers.RegisterUserHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/logOut", func(w http.ResponseWriter, r *http.Request) {
-		handlers.LogOutHandler(w, r, dbPool)
+		handlers.LogOutHandler(w, r, dbPool, redisPool)
 	})
 
 	mux.HandleFunc("/forgot-password", func(w http.ResponseWriter, r *http.Request) {
 		handlers.ResetPasswordRequestForm(w, r)
 	})
 	mux.HandleFunc("/reset-password/send-email", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ResetPasswordRequestHandler(w, r, dbPool)
+		handlers.ResetPasswordRequestHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/forgot-password/validate-user", func(w http.ResponseWriter, r *http.Request) {
-		handlers.TemporaryLoginForm(w, r, dbPool)
+		handlers.TemporaryLoginForm(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/reset-password/temporary-login", func(w http.ResponseWriter, r *http.Request) {
-		handlers.TemporaryLoginHandler(w, r, dbPool)
+		handlers.TemporaryLoginHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/forgot-password/change-password", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ChangePasswordForm(w, r, dbPool)
+		handlers.ChangePasswordForm(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/reset-password/update-password", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ChangePasswordHandler(w, r, dbPool)
+		handlers.ChangePasswordHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/timer", func(w http.ResponseWriter, r *http.Request) {
-		handlers.Timer(w, r, dbPool)
+		handlers.Timer(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/settings", func(w http.ResponseWriter, r *http.Request) {
-		handlers.SettingsHandler(w, r, dbPool)
+		handlers.SettingsHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/update-settings", func(w http.ResponseWriter, r *http.Request) {
-		handlers.UpdateSettingsHandler(w, r, dbPool)
+		handlers.UpdateSettingsHandler(w, r, dbPool, redisPool)
 	})
 
 	// Start the server

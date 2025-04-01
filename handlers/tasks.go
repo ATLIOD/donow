@@ -64,7 +64,7 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 		log.Println("Error retriving tasks for user:", userID, ": ", err)
 	}
 
-	loggedIN, err := utils.AccountExists(r, db)
+	loggedIN, err := utils.AccountExists(r, db, redisClient)
 	if err != nil {
 		fmt.Println("error checking if logged in: ", err)
 	}

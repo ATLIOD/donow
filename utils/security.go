@@ -68,21 +68,26 @@ func AddUser(email string, password string, db *pgxpool.Pool, r *http.Request, c
 		if err != nil || st.Value == "" {
 			return errors.New("unable to retrieve token")
 		}
-		// authroize token and sessions and csrf token
+		// authorize token and sessions and csrf token
 		err = Authorize(r, client)
 		if err != nil {
 			log.Println("Authorization failed:", err)
 			return err
 		}
-		exists, err := AccountExists(r, db)
+		exists, err := AccountExists(r, db, client)
 		if err != nil {
 			log.Println(err)
 			return err
 		}
 		if !exists {
+			userID, err := GetUserIDFromST(client, st.Value)
+			if err != nil {
+				return errors.New("unable to retrieve user id from session token")
+			}
 			// upgrade users temporary account into a permanent account
-			stmt := "UPDATE users SET email = $1, password_hash = $2 WHERE sessiontoken = $3;"
-			_, err = db.Exec(ctx, stmt, email, passwordHash, st.Value)
+			// TODO: check format of userid title in db
+			stmt := "UPDATE users SET email = $1, password_hash = $2 WHERE userID = $3;"
+			_, err = db.Exec(ctx, stmt, email, passwordHash, userID)
 			if err != nil {
 				log.Println("Error adding User", err)
 				return err
