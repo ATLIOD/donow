@@ -10,12 +10,13 @@ import (
 	"text/template"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
-func SettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func SettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	if !utils.CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
-		_, err := utils.CreateTemporaryUser(w, db)
+		_, err := utils.CreateTemporaryUser(w, r, db, redisClient)
 		if err != nil {
 			log.Println("Error creating temporary user:", err)
 			http.Error(w, "Failed to create session", http.StatusInternalServerError)
@@ -50,7 +51,7 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	tmpl.Execute(w, data)
 }
 
-func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Invalid form data", http.StatusBadRequest)
 		return
@@ -67,7 +68,7 @@ func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 
 	st, _ := r.Cookie("session_token")
 	// Get user ID fromi token
-	userID, err := utils.GetUserIDFromST(client, st.Value)
+	userID, err := utils.GetUserIDFromST(redisClient, st.Value)
 	if err != nil {
 		log.Println("Error getting user ID from token:", err)
 		return

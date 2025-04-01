@@ -201,6 +201,7 @@ func CreateTemporaryUser(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 	defer cancel()
 
 	// TODO: check is userid is right name in database
+
 	// Update database with new tokens
 	stmt := "INSERT INTO users (userid) VALUES (uuid_generate_v4()) RETURNING userid;"
 
