@@ -11,9 +11,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
-func LoginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func LoginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	tmpl, err := template.ParseFiles("./ui/html/login-form.html")
 	if err != nil {
 		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
@@ -21,7 +22,7 @@ func LoginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) 
 	}
 	if !utils.CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
-		_, err = utils.CreateTemporaryUser(w, db)
+		_, err = utils.CreateTemporaryUser(w, r, db, redisClient)
 		if err != nil {
 			log.Println("Error creating temporary user:", err)
 			http.Error(w, "Failed to create session", http.StatusInternalServerError)
@@ -35,7 +36,7 @@ func LoginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) 
 		return
 	}
 
-	csrfToken, err := utils.GetCSRFFromST(client, st.Value)
+	csrfToken, err := utils.GetCSRFFromST(redisClient, st.Value)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.Println("no user found with this csrf token")
@@ -57,7 +58,7 @@ func LoginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) 
 	}
 }
 
-func LoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func LoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -71,7 +72,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		return
 	}
 
-	err := utils.LoginUser(w, email, password, db)
+	err := utils.LoginUser(w, r, email, password, db, redisClient)
 	if err != nil {
 		log.Println("Login failed: ", err)
 		if err.Error() == "invalid credentials" {
@@ -94,7 +95,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func SignUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func SignUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	tmpl, err := template.ParseFiles("./ui/html/signup-form.html")
 	if err != nil {
 		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
@@ -102,7 +103,7 @@ func SignUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	}
 	if !utils.CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
-		_, err = utils.CreateTemporaryUser(w, db)
+		_, err = utils.CreateTemporaryUser(w, r, db, redisClient)
 		if err != nil {
 			log.Println("Error creating temporary user:", err)
 			http.Error(w, "Failed to create session", http.StatusInternalServerError)
@@ -116,7 +117,7 @@ func SignUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		return
 	}
 
-	csrfToken, err := utils.GetCSRFFromST(client, st.Value)
+	csrfToken, err := utils.GetCSRFFromST(redisClient, st.Value)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.Println("no user found with this csrf token")
@@ -138,7 +139,7 @@ func SignUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 }
 
 // TODO: check that that the logic for turn temp user into real user is still correct with redis changes
-func RegisterUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func RegisterUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	if r.Method == http.MethodPost {
 		email := r.FormValue("email")
 		password := r.FormValue("password")
@@ -179,7 +180,7 @@ func RegisterUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 			return
 		}
 		// Save the task to the database
-		err = utils.AddUser(email, password, db, r)
+		err = utils.AddUser(email, password, db, r, redisClient)
 		if err != nil {
 			log.Println("add user error: ", err, " user: ", email)
 			w.Header().Set("Content-Type", "text/html")
@@ -194,7 +195,7 @@ func RegisterUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 	}
 }
 
-func LogOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func LogOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	st, err := r.Cookie("session_token")
@@ -205,7 +206,7 @@ func LogOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		log.Println("token does not exist")
 	} else {
 		// get user id from token
-		userID, err := utils.GetUserIDFromST(client, st.Value)
+		userID, err := utils.GetUserIDFromST(redisClient, st.Value)
 		if err != nil {
 			log.Println("error getting user ID from token")
 			// return err
@@ -257,7 +258,7 @@ func ResetPasswordRequestForm(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ResetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func ResetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	email := r.FormValue("email")
 	exists, err := utils.EmailInUse(email, db)
 	if !exists {
@@ -273,7 +274,7 @@ func ResetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgx
 	}
 	if !utils.CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
-		_, err := utils.CreateTemporaryUser(w, db)
+		_, err := utils.CreateTemporaryUser(w, r, db, redisClient)
 		if err != nil {
 			log.Println("Error creating temporary user:", err)
 			http.Error(w, "Failed to create session", http.StatusInternalServerError)
@@ -312,7 +313,7 @@ func ResetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgx
 	w.WriteHeader(http.StatusOK)
 }
 
-func TemporaryLoginForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func TemporaryLoginForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	cookie, err := r.Cookie("reset_email")
 	var email string
 	if err == nil {
@@ -331,7 +332,7 @@ func TemporaryLoginForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool
 		return
 
 	}
-	csrfToken, err := utils.GetCSRFFromST(client, st.Value)
+	csrfToken, err := utils.GetCSRFFromST(redisClient, st.Value)
 	if err != nil || st.Value == "" {
 		log.Println("unable to retrieve csrf token:", err, "user: ", email)
 		w.Header().Set("Content-Type", "text/html")
@@ -356,15 +357,15 @@ func TemporaryLoginForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool
 	}
 }
 
-func TemporaryLoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	err := utils.Authorize(r, db)
+func TemporaryLoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
+	err := utils.Authorize(r, redisClient)
 	if err != nil {
 		log.Println("Authorization failed:", err)
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprintf(w, "internal error. Please try agian.")
 		return
 	}
-	err = utils.Authorize(r, db)
+	err = utils.Authorize(r, redisClient)
 	if err != nil {
 		log.Println("Authorization failed:", err)
 		w.Header().Set("Content-Type", "text/html")
@@ -404,7 +405,7 @@ func TemporaryLoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 	}
 }
 
-func ChangePasswordForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func ChangePasswordForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	cookie, err := r.Cookie("reset_email")
 	email := ""
 	if err == nil {
@@ -423,7 +424,7 @@ func ChangePasswordForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool
 		return
 
 	}
-	csrfToken, err := utils.GetCSRFFromST(client, st.Value)
+	csrfToken, err := utils.GetCSRFFromST(redisClient, st.Value)
 	if err != nil || st.Value == "" {
 		log.Println("unable to retrieve csrf token:", err, "user: ", email)
 		w.Header().Set("Content-Type", "text/html")
@@ -448,8 +449,8 @@ func ChangePasswordForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool
 	}
 }
 
-func ChangePasswordHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
-	err := utils.Authorize(r, db)
+func ChangePasswordHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
+	err := utils.Authorize(r, redisClient)
 	if err != nil {
 		log.Println("Authorization failed:", err)
 		w.Header().Set("Content-Type", "text/html")
