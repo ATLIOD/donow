@@ -24,9 +24,6 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 		return
 	}
 
-	// Handle session management
-	var userID string
-
 	if !utils.CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
 		_, err = utils.CreateTemporaryUser(w, r, db, redisClient)
@@ -43,8 +40,8 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 		return
 	}
 
-	// Get user ID fromi token
-	userID, err = utils.GetUserIDFromST(redisClient, st.Value)
+	// Get user ID from token
+	userID, err := utils.GetUserIDFromST(redisClient, st.Value)
 	if err != nil {
 		log.Println("Error getting user ID from token:", err)
 		return

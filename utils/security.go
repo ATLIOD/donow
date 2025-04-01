@@ -52,7 +52,7 @@ func AddUser(email string, password string, db *pgxpool.Pool, r *http.Request, c
 		log.Println("error hashing password", err)
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if !CookieExists(r, "session_token") {
@@ -85,7 +85,7 @@ func AddUser(email string, password string, db *pgxpool.Pool, r *http.Request, c
 				return errors.New("unable to retrieve user id from session token")
 			}
 			// upgrade users temporary account into a permanent account
-			stmt := "UPDATE users SET email = $1, password_hash = $2 WHERE user_id = $3;"
+			stmt := "UPDATE users SET email = $1, password_hash = $2 WHERE id = $3;"
 			_, err = db.Exec(ctx, stmt, email, passwordHash, userID)
 			if err != nil {
 				log.Println("Error adding User", err)
@@ -105,7 +105,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request, email string, password st
 	// Add logging for debugging
 	log.Printf("Login attempt for email: %s", email)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	// Get user's password hash
@@ -153,7 +153,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request, email string, password st
 
 	// Update database with new tokens
 	// stmt = "UPDATE users SET sessiontoken = $1, csrftoken = $2 WHERE email = $3 RETURNING id;"
-	//
+
 	session := models.Session{
 		SessionToken: sessionToken,
 		UserID:       userID,
@@ -201,14 +201,14 @@ func CreateTemporaryUser(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 		MaxAge:   3600 * 24 * 7,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	// Update database with new tokens
-	stmt := "INSERT INTO users (userid) VALUES (uuid_generate_v4()) RETURNING user_id;"
+	stmt := "INSERT INTO users (id) VALUES (uuid_generate_v4()) RETURNING id;"
 
 	var updatedID string
-	err := db.QueryRow(ctx, stmt, sessionToken, csrfToken).Scan(&updatedID)
+	err := db.QueryRow(ctx, stmt).Scan(&updatedID)
 	if err != nil {
 		log.Printf("Failed to update tokens: %v", err)
 		return "", fmt.Errorf("login failed: %w", err)
@@ -254,7 +254,7 @@ func GenerateOTP() string {
 }
 
 func SetOTP(email string, otp string, db *pgxpool.Pool) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	// execute query to set otp for email in datbase
@@ -305,7 +305,7 @@ func SendOTP(email string, otp string) error {
 
 func IsTempPasswordCorrect(tempPassword string, email string, db *pgxpool.Pool) (bool, error) {
 	// query database for otp  for designated email
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var otp *string
@@ -354,7 +354,7 @@ func ChangePassword(email string, password string, db *pgxpool.Pool) error {
 	}
 
 	// db exec to change password where email = $1
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	stmt := "UPDATE users SET password_hash = $1 WHERE email = $2 RETURNING id;"

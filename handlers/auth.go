@@ -1,13 +1,11 @@
 package handlers
 
 import (
-	"context"
 	"donow/utils"
 	"fmt"
 	"log"
 	"net/http"
 	"text/template"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -196,8 +194,6 @@ func RegisterUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 }
 
 func LogOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
 	st, err := r.Cookie("session_token")
 	if err != nil {
 		log.Println("unable to retrieve session token")
@@ -232,14 +228,11 @@ func LogOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, red
 			Path:     "/",
 			MaxAge:   3600 * 24,
 		})
-		stmt := "UPDATE users SET sessiontoken = $1, csrftoken = $2 WHERE id = $3 RETURNING id;"
-
-		var updatedID string
-		err = db.QueryRow(ctx, stmt, "", "", userID).Scan(&updatedID)
+		err = utils.DeleteSession(redisClient, st.Value)
 		if err != nil {
 			log.Printf("Failed to delete tokens: %v", err)
 		}
-		log.Println("tokens deleted for user: ", updatedID)
+		log.Println("tokens deleted for user: ", userID)
 	}
 	// w.Header().Set("HX-Redirect", "/")
 	// w.WriteHeader(http.StatusOK)

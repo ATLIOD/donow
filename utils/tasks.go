@@ -39,7 +39,7 @@ func SaveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request, client *re
 
 	// functionality to search for user in database := user, found
 	stmt := "INSERT INTO tasks (user_id, title, stage) VALUES ($1, $2, $3);"
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_, err = db.Exec(ctx, stmt, userID, t.Title, t.Stage)
 	if err != nil {
@@ -51,7 +51,7 @@ func SaveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request, client *re
 }
 
 func DeleteTask(taskID int, db *pgxpool.Pool) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	stmt := "DELETE FROM tasks WHERE id = $1;"
@@ -64,7 +64,7 @@ func DeleteTask(taskID int, db *pgxpool.Pool) error {
 }
 
 func MoveTask(taskID string, stage string, db *pgxpool.Pool) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	_, err := db.Exec(ctx, "UPDATE tasks SET stage = $1 WHERE id = $2", stage, taskID)

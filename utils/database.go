@@ -21,7 +21,7 @@ func OpenDB(dsn string) (*pgxpool.Pool, error) {
 	}
 
 	config.MaxConns = 2000
-	config.MaxConnIdleTime = 30 * time.Minute
+	config.MaxConnIdleTime = 20 * time.Second
 	config.MinConns = 10
 
 	pool, err := pgxpool.New(context.Background(), dsn)
@@ -82,7 +82,7 @@ func OpenDB(dsn string) (*pgxpool.Pool, error) {
 // }
 
 func AccountExists(r *http.Request, db *pgxpool.Pool, client *redis.Client) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	// get session from token
 	st, err := r.Cookie("session_token")
@@ -93,7 +93,7 @@ func AccountExists(r *http.Request, db *pgxpool.Pool, client *redis.Client) (boo
 	}
 	userID, _ := GetUserIDFromST(client, st.Value)
 	var email bool
-	getEmailstmt := "SELECT is_temporary FROM users WHERE user_id = $1;"
+	getEmailstmt := "SELECT is_temporary FROM users WHERE id = $1;"
 	row := db.QueryRow(ctx, getEmailstmt, userID)
 	err = row.Scan(&email)
 	if err != nil {
@@ -106,7 +106,7 @@ func AccountExists(r *http.Request, db *pgxpool.Pool, client *redis.Client) (boo
 }
 
 func EmailInUse(email string, db *pgxpool.Pool) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	stmt := "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)"

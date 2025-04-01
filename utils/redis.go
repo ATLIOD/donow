@@ -18,7 +18,7 @@ func OpenRedisPool(dsn string) *redis.Client {
 	}
 
 	// Configure connection pooling
-	opt.PoolSize = 2000                   // Maximum number of connections in the pool
+	opt.PoolSize = 100                    // Maximum number of connections in the pool
 	opt.MinIdleConns = 2                  // Minimum number of idle connections
 	opt.DialTimeout = 5 * time.Second     // Timeout for new connections
 	opt.ConnMaxIdleTime = 5 * time.Minute // Close idle connections after this duration
@@ -33,7 +33,8 @@ func OpenRedisPool(dsn string) *redis.Client {
 
 // StoreSession saves a session in Redis
 func StoreSession(client *redis.Client, session models.Session, ttl time.Duration) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	sessionMap := map[string]any{
 		"user_id":       session.UserID,
@@ -61,7 +62,9 @@ func StoreSession(client *redis.Client, session models.Session, ttl time.Duratio
 
 // GetSession retrieves session details from Redis
 func GetSession(client *redis.Client, sessionToken string) (*models.Session, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	key := "session:" + sessionToken
 
 	data, err := client.HGetAll(ctx, key).Result()
@@ -85,7 +88,8 @@ func GetSession(client *redis.Client, sessionToken string) (*models.Session, err
 
 // DeleteSession removes a single session and its reference in the user index
 func DeleteSession(client *redis.Client, sessionToken string) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	// Get the user ID from the session
 	userID, err := client.HGet(ctx, "session:"+sessionToken, "user_id").Result()
@@ -104,12 +108,16 @@ func DeleteSession(client *redis.Client, sessionToken string) error {
 
 // UpdateLastActivity updates the last activity timestamp of a session
 func UpdateLastActivity(client *redis.Client, sessionToken string) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	return client.HSet(ctx, "session:"+sessionToken, "last_activity", time.Now().Format(time.RFC3339)).Err()
 }
 
 func AuthorizeSession(client *redis.Client, sessionToken string, csrfToken string) (string, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	key := "session:" + sessionToken
 
 	data, err := client.HGetAll(ctx, key).Result()
@@ -126,7 +134,9 @@ func AuthorizeSession(client *redis.Client, sessionToken string, csrfToken strin
 
 // ValidateSession checks if a session exists and is not expired
 func ValidateSession(client *redis.Client, sessionToken string) (bool, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	key := "session:" + sessionToken
 
 	// Check if session exists
@@ -155,7 +165,8 @@ func ValidateSession(client *redis.Client, sessionToken string) (bool, error) {
 
 // CountUserSessions returns the number of active sessions for a specific user
 func CountUserSessions(client *redis.Client, userID string) (int64, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	// Use SCAN to find all session keys
 	var cursor uint64
@@ -194,7 +205,8 @@ func CountUserSessions(client *redis.Client, userID string) (int64, error) {
 
 // DeleteAllUserSessions removes all sessions associated with a specific user
 func DeleteAllUserSessions(client *redis.Client, userID string) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	// Get all session keys for this user from the index
 	sessionKeys, err := client.SMembers(ctx, "user_sessions:"+userID).Result()
@@ -215,7 +227,8 @@ func DeleteAllUserSessions(client *redis.Client, userID string) error {
 }
 
 func GetCSRFFromST(client *redis.Client, sessionToken string) (string, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	csrfToken, err := client.HGet(ctx, "session:"+sessionToken, "csrf_token").Result()
 	if err != nil {
@@ -226,7 +239,9 @@ func GetCSRFFromST(client *redis.Client, sessionToken string) (string, error) {
 }
 
 func GetUserIDFromST(client *redis.Client, sessionToken string) (string, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	// Get the user ID from the session
 	uID, err := client.HGet(ctx, "session:"+sessionToken, "user_id").Result()
 	if err != nil {

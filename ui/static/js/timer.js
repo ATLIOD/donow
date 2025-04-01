@@ -4,6 +4,7 @@ function timer(durationInMinutes) {
     remaining: 0,
     interval: null,
     sound: new Audio("/static/sounds/notification.mp3"),
+    pausedTime: null,
 
     init() {
       this.reset(durationInMinutes);
@@ -14,6 +15,7 @@ function timer(durationInMinutes) {
       this.expiry = new Date().getTime() + minutes * 60000;
       this.setRemaining();
       if (this.interval) clearInterval(this.interval);
+      this.pausedTime = null;
     },
 
     // TODO: test this
@@ -32,6 +34,22 @@ function timer(durationInMinutes) {
 
     stop() {
       clearInterval(this.interval);
+      this.pausedTime = this.remaining;
+    },
+
+    resume() {
+      if (this.pausedTime !== null) {
+        this.expiry = new Date().getTime() + this.pausedTime * 1000;
+        this.interval = setInterval(() => {
+          this.setRemaining();
+          if (this.remaining <= 0) {
+            this.onEnd();
+            this.stop();
+            this.reset(durationInMinutes);
+          }
+        }, 1000);
+        this.pausedTime = null;
+      }
     },
 
     setRemaining() {

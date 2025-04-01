@@ -36,6 +36,7 @@ func Timer(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 		return
 	}
 
+	log.Println("User ID from token:", userID)
 	studyTime, shortTime, longTime, err := utils.GetTimes(userID, db)
 	if err != nil {
 		log.Println("error getting times: ", err)
