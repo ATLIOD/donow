@@ -137,6 +137,7 @@ func SignUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	}
 }
 
+// TODO: check that that the logic for turn temp user into real user is still correct with redis changes
 func RegisterUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	if r.Method == http.MethodPost {
 		email := r.FormValue("email")
