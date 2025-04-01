@@ -11,9 +11,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
-func SaveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request) error {
+func SaveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request, client *redis.Client) error {
 	// authorize
 	err := Authorize(r, client)
 	if err != nil {
