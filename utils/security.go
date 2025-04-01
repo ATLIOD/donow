@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"crypto/rand"
+	"donow/models"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -96,7 +97,7 @@ func AddUser(email string, password string, db *pgxpool.Pool, r *http.Request, c
 	return nil
 }
 
-func LoginUser(w http.ResponseWriter, email string, password string, db *pgxpool.Pool, client *redis.Client) error {
+func LoginUser(w http.ResponseWriter, r *http.Request, email string, password string, db *pgxpool.Pool, client *redis.Client) error {
 	// Add logging for debugging
 	log.Printf("Login attempt for email: %s", email)
 
@@ -149,7 +150,17 @@ func LoginUser(w http.ResponseWriter, email string, password string, db *pgxpool
 	// Update database with new tokens
 	// stmt = "UPDATE users SET sessiontoken = $1, csrftoken = $2 WHERE email = $3 RETURNING id;"
 	//
-	//TODO: get all user categories for session store
+	session := models.Session{
+		SessionToken: sessionToken,
+		UserID:       userID,
+		CreatedAt:    time.Now().Format(time.RFC3339),
+		ExpiresAt:    time.Now().Add(24 * time.Hour).Format(time.RFC3339),
+		LastActivity: time.Now().Format(time.RFC3339),
+		CSRFToken:    csrfToken,
+		UserAgent:    GetUserAgent(r),
+		IPAddress:    GetIP(r),
+	}
+
 	err := StoreSession(client, session, 24*time.Hour)
 	if err != nil {
 		log.Printf("Failed to session: %v", err)
@@ -160,7 +171,7 @@ func LoginUser(w http.ResponseWriter, email string, password string, db *pgxpool
 	return nil
 }
 
-func CreateTemporaryUser(w http.ResponseWriter, db *pgxpool.Pool, client *redis.Client) (string, error) {
+func CreateTemporaryUser(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, client *redis.Client) (string, error) {
 	// Generate tokens
 	sessionToken := GenerateToken(32)
 	csrfToken := GenerateToken(32)
@@ -186,33 +197,43 @@ func CreateTemporaryUser(w http.ResponseWriter, db *pgxpool.Pool, client *redis.
 		MaxAge:   3600 * 24 * 7,
 	})
 
-	// ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	// defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
+	// TODO: check is userid is right name in database
 	// Update database with new tokens
-	// stmt := "INSERT INTO users(sessiontoken, csrftoken) VALUES( $1, $2) RETURNING id;"
-	// log.Printf("Setting session cookie: %+v", sessionToken)
-	// log.Printf("Setting CSRF cookie: %+v", csrfToken)
-	//
-	//
-	// var updatedID string
-	// err := db.QueryRow(ctx, stmt, sessionToken, csrfToken).Scan(&updatedID)
-	// if err != nil {
-	// 	log.Printf("Failed to update tokens: %v", err)
-	// 	return "", fmt.Errorf("login failed: %w", err)
-	// }
-	// if updatedID == "" {
-	// 	log.Println("no user updated")
-	// }
+	stmt := "INSERT INTO users (userid) VALUES (uuid_generate_v4()) RETURNING userid;"
 
-	// TODO: get all user categories for session store
-	// TODO: new logic for adding temp user to database
-	err := StoreSession(client, session, 24*time.Hour)
+	var updatedID string
+	err := db.QueryRow(ctx, stmt, sessionToken, csrfToken).Scan(&updatedID)
+	if err != nil {
+		log.Printf("Failed to update tokens: %v", err)
+		return "", fmt.Errorf("login failed: %w", err)
+	}
+	if updatedID == "" {
+		log.Println("no user updated")
+	}
+
+	log.Printf("Inserted temp user into database: %+v", updatedID)
+
+	session := models.Session{
+		SessionToken: sessionToken,
+		UserID:       updatedID,
+		CreatedAt:    time.Now().Format(time.RFC3339),
+		ExpiresAt:    time.Now().Add(24 * time.Hour).Format(time.RFC3339),
+		LastActivity: time.Now().Format(time.RFC3339),
+		CSRFToken:    csrfToken,
+		UserAgent:    GetUserAgent(r),
+		IPAddress:    GetIP(r),
+	}
+	log.Printf("Setting session cookie: %+v", sessionToken)
+	log.Printf("Setting CSRF cookie: %+v", csrfToken)
+
+	err = StoreSession(client, session, 24*time.Hour)
 	if err != nil {
 		log.Printf("Failed to session: %v", err)
 		return "", fmt.Errorf("login failed: %w", err)
 	}
-	updatedID, err := GetUserIDFromST(client, sessionToken)
 
 	return updatedID, nil
 }
