@@ -12,9 +12,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
-func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	// Parse template early to catch any template errors
 	tmpl, err := template.ParseFiles("./ui/html/tasks.html")
 	if err != nil {
@@ -28,7 +29,7 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 
 	if !utils.CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
-		_, err = utils.CreateTemporaryUser(w, db)
+		_, err = utils.CreateTemporaryUser(w, r, db, redisClient)
 		if err != nil {
 			log.Println("Error creating temporary user:", err)
 			http.Error(w, "Failed to create session", http.StatusInternalServerError)
@@ -43,13 +44,13 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	}
 
 	// Get user ID fromi token
-	userID, err = utils.GetUserIDFromST(client, st.Value)
+	userID, err = utils.GetUserIDFromST(redisClient, st.Value)
 	if err != nil {
 		log.Println("Error getting user ID from token:", err)
 		return
 	}
 
-	csrfToken, err := utils.GetCSRFFromST(client, st.Value)
+	csrfToken, err := utils.GetCSRFFromST(redisClient, st.Value)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			log.Println("no user found with this csrf token")
@@ -98,7 +99,7 @@ func AddTaskForm(w http.ResponseWriter) {
 }
 
 // handler receieved post methods for adding tasks and parses them to be addedd to the database
-func AddTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func AddTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	if r.Method == http.MethodPost {
 		Formtitle := r.FormValue("title")
 		Formstage := r.FormValue("stage")
@@ -112,7 +113,7 @@ func AddTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 		}
 
 		// Save the task to the database
-		utils.SaveToDatabase(task, db, r)
+		utils.SaveToDatabase(task, db, r, redisClient)
 
 		w.Header().Set("HX-Redirect", "/")
 		w.WriteHeader(http.StatusOK)
