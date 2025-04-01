@@ -18,9 +18,8 @@ function timer(durationInMinutes) {
       this.pausedTime = null;
     },
 
-    // TODO: test this
     start() {
-      this.reset(durationInMinutes);
+      if (this.interval) clearInterval(this.interval); // Clear any existing interval
       this.expiry = new Date().getTime() + this.remaining * 1000;
       this.interval = setInterval(() => {
         this.setRemaining();

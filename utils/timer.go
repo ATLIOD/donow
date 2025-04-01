@@ -2,14 +2,12 @@ package utils
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func GetTimes(userID string, db *pgxpool.Pool) (int, int, int, error) {
-	log.Println("Getting times for user ID:", userID)
 	var studyTime, shortTime, longTime int
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
