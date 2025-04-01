@@ -85,8 +85,7 @@ func AddUser(email string, password string, db *pgxpool.Pool, r *http.Request, c
 				return errors.New("unable to retrieve user id from session token")
 			}
 			// upgrade users temporary account into a permanent account
-			// TODO: check format of userid title in db
-			stmt := "UPDATE users SET email = $1, password_hash = $2 WHERE userID = $3;"
+			stmt := "UPDATE users SET email = $1, password_hash = $2 WHERE user_id = $3;"
 			_, err = db.Exec(ctx, stmt, email, passwordHash, userID)
 			if err != nil {
 				log.Println("Error adding User", err)
@@ -205,10 +204,8 @@ func CreateTemporaryUser(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// TODO: check is userid is right name in database
-
 	// Update database with new tokens
-	stmt := "INSERT INTO users (userid) VALUES (uuid_generate_v4()) RETURNING userid;"
+	stmt := "INSERT INTO users (userid) VALUES (uuid_generate_v4()) RETURNING user_id;"
 
 	var updatedID string
 	err := db.QueryRow(ctx, stmt, sessionToken, csrfToken).Scan(&updatedID)
