@@ -17,6 +17,7 @@ import (
 func SaveToDatabase(t models.Task, db *pgxpool.Pool, w http.ResponseWriter, r *http.Request, client *redis.Client) error {
 	var userID string
 	var err error
+	var st *http.Cookie
 	if !CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
 		userID, err = CreateTemporaryUser(w, r, db, client)
@@ -26,7 +27,7 @@ func SaveToDatabase(t models.Task, db *pgxpool.Pool, w http.ResponseWriter, r *h
 		}
 	} else {
 		// get session from token
-		st, err := r.Cookie("session_token")
+		st, err = r.Cookie("session_token")
 		if err != nil || st.Value == "" {
 			return errors.New("unable to retrieve token")
 		}
@@ -47,6 +48,8 @@ func SaveToDatabase(t models.Task, db *pgxpool.Pool, w http.ResponseWriter, r *h
 		log.Println("Error inserting task:", err)
 		return fmt.Errorf("failed to save task: %w", err)
 	}
+	UpdateLastActivityDB(db, userID)
+	UpdateLastActivityRedis(client, st.Value)
 
 	return nil
 }

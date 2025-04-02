@@ -86,6 +86,8 @@ func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 		fmt.Fprintf(w, "<p style='color: red;'>Error updating settings.</p>")
 		return
 	}
+	utils.UpdateLastActivityDB(db, userID)
+	utils.UpdateLastActivityRedis(redisClient, st.Value)
 
 	// Return an HTMX response (updates the #messages div)
 	fmt.Fprintf(w, "<p style='color: green;'>Settings updated successfully!</p>")
