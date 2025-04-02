@@ -128,7 +128,7 @@ func AddTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, re
 	}
 }
 
-func DeleteTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func DeleteTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	if r.Method == http.MethodDelete {
 		taskID := path.Base(r.URL.Path)
 		log.Println("Extracted Task ID:", taskID) // Debugging
@@ -153,11 +153,32 @@ func DeleteTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool)
 			return // ⬅ Return here to prevent WriteHeader(200)
 		}
 
+		// get session from token
+		st, err := r.Cookie("session_token")
+		if err != nil || st.Value == "" {
+			log.Println("unable to retrieve token:", err)
+			http.Error(w, "Failed to delete task", http.StatusInternalServerError)
+			return
+
+		}
+
+		// get user id from token
+		userID, err := utils.GetUserIDFromST(redisClient, st.Value)
+		if err != nil {
+			log.Println("Error retreiving user id:", err)
+			http.Error(w, "Failed to delete task", http.StatusInternalServerError)
+			return
+
+		}
+
+		utils.UpdateLastActivityDB(db, userID)
+		utils.UpdateLastActivityRedis(redisClient, st.Value)
+
 		w.WriteHeader(http.StatusOK) // ⬅ Only happens if everything was successful
 	}
 }
 
-func MoveTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func MoveTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	if r.Method != http.MethodPatch {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -184,9 +205,30 @@ func MoveTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	err = utils.MoveTask(taskID, stage, db)
 	if err != nil {
 		log.Println("error moving task:", err)
-		http.Error(w, "Failed to delete task", http.StatusInternalServerError)
+		http.Error(w, "Failed to move task", http.StatusInternalServerError)
 		return
 	}
+
+	// get token from cookie
+	st, err := r.Cookie("session_token")
+	if err != nil || st.Value == "" {
+		log.Println("unable to retrieve token:", err)
+		http.Error(w, "Failed to move task", http.StatusInternalServerError)
+		return
+
+	}
+
+	// get user id from token
+	userID, err := utils.GetUserIDFromST(redisClient, st.Value)
+	if err != nil {
+		log.Println("Error retreiving user id:", err)
+		http.Error(w, "Failed to move task", http.StatusInternalServerError)
+		return
+
+	}
+
+	utils.UpdateLastActivityDB(db, userID)
+	utils.UpdateLastActivityRedis(redisClient, st.Value)
 
 	w.Header().Set("HX-Redirect", "/")
 	w.WriteHeader(http.StatusOK)

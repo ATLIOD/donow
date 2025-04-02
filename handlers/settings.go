@@ -63,20 +63,36 @@ func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 		return
 	}
 
+	var userID string
+	var err error
+	var st *http.Cookie
+
+	if !utils.CookieExists(r, "session_token") {
+		log.Println("No session found, creating temporary user")
+		userID, err = utils.CreateTemporaryUser(w, r, db, redisClient)
+		if err != nil {
+			log.Println("Error creating temporary user:", err)
+		}
+	} else {
+		// get session from token
+		st, err = r.Cookie("session_token")
+		if err != nil || st.Value == "" {
+		}
+
+		// get user id from token
+		userID, err = utils.GetUserIDFromST(redisClient, st.Value)
+		if err != nil {
+			log.Println("Error getting user ID from token:", err)
+			return
+		}
+	}
+
 	studyTime, errStudy := strconv.Atoi(r.FormValue("study_time"))
 	shortTime, errShort := strconv.Atoi(r.FormValue("short_time"))
 	longTime, errLong := strconv.Atoi(r.FormValue("long_time"))
 
 	if errStudy != nil || errShort != nil || errLong != nil || studyTime <= 0 || shortTime <= 0 || longTime <= 0 {
 		fmt.Fprintf(w, "<p style='color: red;'>Error: All values must be positive integers greater than 0.</p>")
-		return
-	}
-
-	st, _ := r.Cookie("session_token")
-	// Get user ID fromi token
-	userID, err := utils.GetUserIDFromST(redisClient, st.Value)
-	if err != nil {
-		log.Println("Error getting user ID from token:", err)
 		return
 	}
 

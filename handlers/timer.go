@@ -13,14 +13,26 @@ import (
 )
 
 func Timer(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
+	tmpl, err := template.ParseFiles("./ui/html/timer.html")
+	if err != nil {
+		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	if !utils.CookieExists(r, "session_token") {
-		log.Println("No session found, creating temporary user")
-		_, err := utils.CreateTemporaryUser(w, r, db, redisClient)
-		if err != nil {
-			log.Println("Error creating temporary user:", err)
-			http.Error(w, "Failed to create session", http.StatusInternalServerError)
-			return
+		data := models.TimerData{
+			Study:      25,
+			ShortBreak: 5,
+			LongBreak:  10,
+			IsLoggedIn: false,
 		}
+
+		err := tmpl.Execute(w, data)
+		if err != nil {
+			log.Println("Error rendering template:", err)
+			http.Error(w, "Error displaying tasks", http.StatusInternalServerError)
+		}
+
 	}
 
 	loggedIN, err := utils.AccountExists(r, db, redisClient)
@@ -47,11 +59,7 @@ func Timer(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 		LongBreak:  longTime,
 		IsLoggedIn: loggedIN,
 	}
-	tmpl, err := template.ParseFiles("./ui/html/timer.html")
-	if err != nil {
-		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+
 	err = tmpl.Execute(w, data)
 	if err != nil {
 		http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
