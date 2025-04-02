@@ -10,7 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// OpenRedis initializes a Redis connection pool
+// OpenRedisPool initializes a Redis connection pool
 func OpenRedisPool(dsn string) *redis.Client {
 	opt, err := redis.ParseURL(dsn)
 	if err != nil {
@@ -61,7 +61,7 @@ func StoreSession(client *redis.Client, session models.Session, ttl time.Duratio
 }
 
 // GetSession retrieves session details from Redis
-func GetSession(client *redis.Client, sessionToken string) (*models.Session, error) {
+func getSession(client *redis.Client, sessionToken string) (*models.Session, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -106,15 +106,15 @@ func DeleteSession(client *redis.Client, sessionToken string) error {
 	return client.Del(ctx, "session:"+sessionToken).Err()
 }
 
-// UpdateLastActivity updates the last activity timestamp of a session
-func UpdateLastActivity(client *redis.Client, sessionToken string) error {
+// UpdateLastActivityRedis updates the last activity timestamp of a session
+func UpdateLastActivityRedis(client *redis.Client, sessionToken string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	return client.HSet(ctx, "session:"+sessionToken, "last_activity", time.Now().Format(time.RFC3339)).Err()
 }
 
-func AuthorizeSession(client *redis.Client, sessionToken string, csrfToken string) (string, error) {
+func authorizeSession(client *redis.Client, sessionToken string, csrfToken string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -164,7 +164,7 @@ func ValidateSession(client *redis.Client, sessionToken string) (bool, error) {
 }
 
 // CountUserSessions returns the number of active sessions for a specific user
-func CountUserSessions(client *redis.Client, userID string) (int64, error) {
+func countUserSessions(client *redis.Client, userID string) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -204,7 +204,7 @@ func CountUserSessions(client *redis.Client, userID string) (int64, error) {
 }
 
 // DeleteAllUserSessions removes all sessions associated with a specific user
-func DeleteAllUserSessions(client *redis.Client, userID string) error {
+func deleteAllUserSessions(client *redis.Client, userID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

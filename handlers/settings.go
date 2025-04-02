@@ -14,14 +14,27 @@ import (
 )
 
 func SettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
+	tmpl, err := template.ParseFiles("./ui/html/settings.html")
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+
 	if !utils.CookieExists(r, "session_token") {
-		log.Println("No session found, creating temporary user")
-		_, err := utils.CreateTemporaryUser(w, r, db, redisClient)
-		if err != nil {
-			log.Println("Error creating temporary user:", err)
-			http.Error(w, "Failed to create session", http.StatusInternalServerError)
-			return
+		data := models.TimerData{
+			Study:      25,
+			ShortBreak: 5,
+			LongBreak:  10,
+			IsLoggedIn: false,
 		}
+
+		err := tmpl.Execute(w, data)
+		if err != nil {
+			log.Println("Error rendering template:", err)
+			http.Error(w, "Error displaying tasks", http.StatusInternalServerError)
+		}
+		return
+
 	}
 
 	loggedIN, err := utils.AccountExists(r, db, redisClient)
@@ -49,18 +62,40 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, r
 		IsLoggedIn: loggedIN,
 	}
 
-	tmpl, err := template.ParseFiles("./ui/html/settings.html")
+	err = tmpl.Execute(w, data)
 	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
-	tmpl.Execute(w, data)
 }
 
 func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Invalid form data", http.StatusBadRequest)
 		return
+	}
+
+	var userID string
+	var err error
+	var st *http.Cookie
+
+	if !utils.CookieExists(r, "session_token") {
+		log.Println("No session found, creating temporary user")
+		userID, err = utils.CreateTemporaryUser(w, r, db, redisClient)
+		if err != nil {
+			log.Println("Error creating temporary user:", err)
+		}
+	} else {
+		// get session from token
+		st, err = r.Cookie("session_token")
+		if err != nil || st.Value == "" {
+		}
+
+		// get user id from token
+		userID, err = utils.GetUserIDFromST(redisClient, st.Value)
+		if err != nil {
+			log.Println("Error getting user ID from token:", err)
+			return
+		}
 	}
 
 	studyTime, errStudy := strconv.Atoi(r.FormValue("study_time"))
@@ -72,19 +107,16 @@ func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 		return
 	}
 
-	st, _ := r.Cookie("session_token")
-	// Get user ID fromi token
-	userID, err := utils.GetUserIDFromST(redisClient, st.Value)
-	if err != nil {
-		log.Println("Error getting user ID from token:", err)
-		return
-	}
-
 	err = utils.UpdateSettings(userID, studyTime, shortTime, longTime, db)
 	if err != nil {
 		log.Println("Database update error:", err)
 		fmt.Fprintf(w, "<p style='color: red;'>Error updating settings.</p>")
 		return
+	}
+
+	utils.UpdateLastActivityDB(db, userID)
+	if st != nil {
+		utils.UpdateLastActivityRedis(redisClient, st.Value)
 	}
 
 	// Return an HTMX response (updates the #messages div)
