@@ -136,7 +136,6 @@ func SignUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, red
 	}
 }
 
-// TODO: check that that the logic for turn temp user into real user is still correct with redis changes
 func RegisterUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	if r.Method == http.MethodPost {
 		email := r.FormValue("email")
@@ -193,7 +192,7 @@ func RegisterUserHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 	}
 }
 
-func LogOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
+func LogOutHandler(w http.ResponseWriter, r *http.Request, redisClient *redis.Client) {
 	st, err := r.Cookie("session_token")
 	if err != nil {
 		log.Println("unable to retrieve session token")
@@ -239,7 +238,7 @@ func LogOutHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, red
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-func ResetPasswordRequestForm(w http.ResponseWriter, r *http.Request) {
+func ResetPasswordRequestForm(w http.ResponseWriter) {
 	tmpl, err := template.ParseFiles("./ui/html/reset-password-request.html")
 	if err != nil {
 		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
@@ -306,7 +305,7 @@ func ResetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgx
 	w.WriteHeader(http.StatusOK)
 }
 
-func TemporaryLoginForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
+func TemporaryLoginForm(w http.ResponseWriter, r *http.Request, redisClient *redis.Client) {
 	cookie, err := r.Cookie("reset_email")
 	var email string
 	if err == nil {
@@ -398,7 +397,7 @@ func TemporaryLoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 	}
 }
 
-func ChangePasswordForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
+func ChangePasswordForm(w http.ResponseWriter, r *http.Request, redisClient *redis.Client) {
 	cookie, err := r.Cookie("reset_email")
 	email := ""
 	if err == nil {

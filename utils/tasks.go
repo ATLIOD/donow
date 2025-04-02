@@ -14,27 +14,40 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func SaveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request, client *redis.Client) error {
-	// authorize
-	err := Authorize(r, client)
-	if err != nil {
-		log.Println("Authorization failed:", err)
-		return err
-	}
+func SaveToDatabase(t models.Task, db *pgxpool.Pool, w http.ResponseWriter, r *http.Request, client *redis.Client) error {
+	var userID string
+	var err error
+	var st *http.Cookie
+	var sessionToken string // Store the token value
 
-	// extra log
-	log.Println("Authorization successful, proceeding to save task")
+	if !CookieExists(r, "session_token") {
+		log.Println("No session found, creating temporary user")
+		userID, err = CreateTemporaryUser(w, r, db, client)
+		if err != nil {
+			log.Println("Error creating temporary user:", err)
+			return fmt.Errorf("failed to create session: %w", err)
+		}
+		sessionToken = "" // Indicate no session token
+	} else {
+		// get session from token
+		st, err = r.Cookie("session_token")
+		if err != nil {
+			log.Println("Error getting cookie:", err)
+			return errors.New("unable to retrieve token")
+		}
 
-	// get session from token
-	st, err := r.Cookie("session_token")
-	if err != nil || st.Value == "" {
-		return errors.New("unable to retrieve token")
-	}
+		if st == nil || st.Value == "" {
+			log.Println("Session token is empty.")
+			return errors.New("empty session token")
+		}
 
-	// get user id from token
-	userID, err := GetUserIDFromST(client, st.Value)
-	if err != nil {
-		return err
+		sessionToken = st.Value
+
+		// get user id from token
+		userID, err = GetUserIDFromST(client, sessionToken)
+		if err != nil {
+			return err
+		}
 	}
 
 	// functionality to search for user in database := user, found
@@ -45,6 +58,11 @@ func SaveToDatabase(t models.Task, db *pgxpool.Pool, r *http.Request, client *re
 	if err != nil {
 		log.Println("Error inserting task:", err)
 		return fmt.Errorf("failed to save task: %w", err)
+	}
+	UpdateLastActivityDB(db, userID)
+
+	if sessionToken != "" {
+		UpdateLastActivityRedis(client, sessionToken)
 	}
 
 	return nil
@@ -107,19 +125,22 @@ func SortTasks(rows pgx.Rows) ([]models.Task, []models.Task, []models.Task, erro
 	return toDo, inProgress, completed, nil
 }
 
-func GetTasks(userID string, db *pgxpool.Pool) ([]models.Task, []models.Task, []models.Task, error) {
+func GetTasks(userID string, db *pgxpool.Pool) (*[]models.Task, *[]models.Task, *[]models.Task, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	tasks := []models.Task{}
 	// Fetch tasks for user
 	stmt := "SELECT id, title, stage FROM tasks WHERE user_id = $1"
-	rows, err := db.Query(context.Background(), stmt, userID)
+	rows, err := db.Query(ctx, stmt, userID)
 	if err != nil {
 		log.Println(err)
-		return tasks, tasks, tasks, errors.New("error querying tasks")
+		return &tasks, &tasks, &tasks, errors.New("error querying tasks")
 	}
 	todo, inProgress, completed, err := SortTasks(rows)
 	if err != nil {
 		log.Println("Error processing tasks: ", err)
-		return tasks, tasks, tasks, errors.New("error processing tasks")
+		return &tasks, &tasks, &tasks, errors.New("error processing tasks")
 	}
-	return todo, inProgress, completed, nil
+	return &todo, &inProgress, &completed, nil
 }

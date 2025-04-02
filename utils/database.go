@@ -121,3 +121,17 @@ func EmailInUse(email string, db *pgxpool.Pool) (bool, error) {
 
 	return exists, nil
 }
+
+// ALTER TABLE users ADD COLUMN last_activity TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW();
+func UpdateLastActivityDB(db *pgxpool.Pool, userID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	stmt := "UPDATE users SET last_activity = NOW() WHERE id = $1" // Use NOW() in the SQL statement
+	_, err := db.Exec(ctx, stmt, userID)                           // Pass only the userID as a parameter
+	if err != nil {
+		return fmt.Errorf("error updating last activity: %w", err)
+	}
+
+	return nil
+}

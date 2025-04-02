@@ -25,13 +25,23 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 	}
 
 	if !utils.CookieExists(r, "session_token") {
-		log.Println("No session found, creating temporary user")
-		_, err = utils.CreateTemporaryUser(w, r, db, redisClient)
-		if err != nil {
-			log.Println("Error creating temporary user:", err)
-			http.Error(w, "Failed to create session", http.StatusInternalServerError)
-			return
+		// log.Println("No session found, creating temporary user")
+		// _, err = utils.CreateTemporaryUser(w, r, db, redisClient)
+		// if err != nil {
+		// 	log.Println("Error creating temporary user:", err)
+		// 	http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		// 	return
+		// }
+		data := models.PageData{
+			IsLoggedIn: false,
 		}
+
+		err = tmpl.Execute(w, data)
+		if err != nil {
+			log.Println("Error rendering template:", err)
+			http.Error(w, "Error displaying tasks", http.StatusInternalServerError)
+		}
+
 	}
 	// Get session token from cookie
 	st, err := r.Cookie("session_token")
@@ -55,7 +65,7 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 		log.Println("error occured: ", err)
 	}
 
-	var toDo, inProgress, completed []models.Task
+	var toDo, inProgress, completed *[]models.Task
 	toDo, inProgress, completed, err = utils.GetTasks(userID, db)
 	if err != nil {
 		log.Println("Error retriving tasks for user:", userID, ": ", err)
@@ -68,9 +78,9 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 
 	// Render template with categorized tasks
 	data := models.PageData{
-		Todo:       toDo,
-		InProgress: inProgress,
-		Complete:   completed,
+		Todo:       *toDo,
+		InProgress: *inProgress,
+		Complete:   *completed,
 		CSRFtoken:  csrfToken,
 		IsLoggedIn: loggedIN,
 	}
@@ -82,7 +92,7 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 	}
 }
 
-// handler displays template for adding tasks
+// AddTaskForm handler displays template for adding tasks
 func AddTaskForm(w http.ResponseWriter) {
 	tmpl, err := template.ParseFiles("./ui/html/add-task-form.html")
 	if err != nil {
@@ -95,7 +105,7 @@ func AddTaskForm(w http.ResponseWriter) {
 	}
 }
 
-// handler receieved post methods for adding tasks and parses them to be addedd to the database
+// AddTaskHandler receieves post methods for adding tasks and parses them to be addedd to the database
 func AddTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	if r.Method == http.MethodPost {
 		Formtitle := r.FormValue("title")
@@ -110,7 +120,7 @@ func AddTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, re
 		}
 
 		// Save the task to the database
-		utils.SaveToDatabase(task, db, r, redisClient)
+		utils.SaveToDatabase(task, db, w, r, redisClient)
 
 		w.Header().Set("HX-Redirect", "/")
 		w.WriteHeader(http.StatusOK)
@@ -118,7 +128,7 @@ func AddTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, re
 	}
 }
 
-func DeleteTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func DeleteTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	if r.Method == http.MethodDelete {
 		taskID := path.Base(r.URL.Path)
 		log.Println("Extracted Task ID:", taskID) // Debugging
@@ -143,11 +153,32 @@ func DeleteTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool)
 			return // ⬅ Return here to prevent WriteHeader(200)
 		}
 
+		// get session from token
+		st, err := r.Cookie("session_token")
+		if err != nil || st.Value == "" {
+			log.Println("unable to retrieve token:", err)
+			http.Error(w, "Failed to delete task", http.StatusInternalServerError)
+			return
+
+		}
+
+		// get user id from token
+		userID, err := utils.GetUserIDFromST(redisClient, st.Value)
+		if err != nil {
+			log.Println("Error retreiving user id:", err)
+			http.Error(w, "Failed to delete task", http.StatusInternalServerError)
+			return
+
+		}
+
+		utils.UpdateLastActivityDB(db, userID)
+		utils.UpdateLastActivityRedis(redisClient, st.Value)
+
 		w.WriteHeader(http.StatusOK) // ⬅ Only happens if everything was successful
 	}
 }
 
-func MoveTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
+func MoveTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	if r.Method != http.MethodPatch {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -174,9 +205,30 @@ func MoveTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool) {
 	err = utils.MoveTask(taskID, stage, db)
 	if err != nil {
 		log.Println("error moving task:", err)
-		http.Error(w, "Failed to delete task", http.StatusInternalServerError)
+		http.Error(w, "Failed to move task", http.StatusInternalServerError)
 		return
 	}
+
+	// get token from cookie
+	st, err := r.Cookie("session_token")
+	if err != nil || st.Value == "" {
+		log.Println("unable to retrieve token:", err)
+		http.Error(w, "Failed to move task", http.StatusInternalServerError)
+		return
+
+	}
+
+	// get user id from token
+	userID, err := utils.GetUserIDFromST(redisClient, st.Value)
+	if err != nil {
+		log.Println("Error retreiving user id:", err)
+		http.Error(w, "Failed to move task", http.StatusInternalServerError)
+		return
+
+	}
+
+	utils.UpdateLastActivityDB(db, userID)
+	utils.UpdateLastActivityRedis(redisClient, st.Value)
 
 	w.Header().Set("HX-Redirect", "/")
 	w.WriteHeader(http.StatusOK)

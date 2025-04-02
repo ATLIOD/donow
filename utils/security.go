@@ -135,7 +135,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request, email string, password st
 		Name:     "session_token",
 		Value:    sessionToken,
 		HttpOnly: true,
-		//       Secure:   true,        // Only send over HTTPS
+		Secure:   true, // Only send over HTTPS
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 		MaxAge:   3600 * 24, // 24 hours
@@ -185,7 +185,7 @@ func CreateTemporaryUser(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 		Name:     "session_token",
 		Value:    sessionToken,
 		HttpOnly: true,
-		//       Secure:   true,        // Only send over HTTPS
+		Secure:   true, // Only send over HTTPS
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 		MaxAge:   3600 * 24 * 7, // 7 days
@@ -195,7 +195,7 @@ func CreateTemporaryUser(w http.ResponseWriter, r *http.Request, db *pgxpool.Poo
 		Name:     "csrf_token",
 		Value:    csrfToken,
 		HttpOnly: false, // Needs to be accessible by JavaScript
-		//	Secure:   true,
+		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 		MaxAge:   3600 * 24 * 7,
