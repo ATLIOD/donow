@@ -92,7 +92,7 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 	}
 }
 
-// handler displays template for adding tasks
+// AddTaskForm handler displays template for adding tasks
 func AddTaskForm(w http.ResponseWriter) {
 	tmpl, err := template.ParseFiles("./ui/html/add-task-form.html")
 	if err != nil {
@@ -105,7 +105,7 @@ func AddTaskForm(w http.ResponseWriter) {
 	}
 }
 
-// handler receieved post methods for adding tasks and parses them to be addedd to the database
+// AddTaskHandler receieves post methods for adding tasks and parses them to be addedd to the database
 func AddTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	if r.Method == http.MethodPost {
 		Formtitle := r.FormValue("title")

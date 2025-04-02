@@ -54,7 +54,10 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, r
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
-	tmpl.Execute(w, data)
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		return
+	}
 }
 
 func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
