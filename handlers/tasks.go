@@ -25,13 +25,23 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 	}
 
 	if !utils.CookieExists(r, "session_token") {
-		log.Println("No session found, creating temporary user")
-		_, err = utils.CreateTemporaryUser(w, r, db, redisClient)
-		if err != nil {
-			log.Println("Error creating temporary user:", err)
-			http.Error(w, "Failed to create session", http.StatusInternalServerError)
-			return
+		// log.Println("No session found, creating temporary user")
+		// _, err = utils.CreateTemporaryUser(w, r, db, redisClient)
+		// if err != nil {
+		// 	log.Println("Error creating temporary user:", err)
+		// 	http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		// 	return
+		// }
+		data := models.PageData{
+			IsLoggedIn: false,
 		}
+
+		err = tmpl.Execute(w, data)
+		if err != nil {
+			log.Println("Error rendering template:", err)
+			http.Error(w, "Error displaying tasks", http.StatusInternalServerError)
+		}
+
 	}
 	// Get session token from cookie
 	st, err := r.Cookie("session_token")
@@ -55,7 +65,7 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 		log.Println("error occured: ", err)
 	}
 
-	var toDo, inProgress, completed []models.Task
+	var toDo, inProgress, completed *[]models.Task
 	toDo, inProgress, completed, err = utils.GetTasks(userID, db)
 	if err != nil {
 		log.Println("Error retriving tasks for user:", userID, ": ", err)
@@ -68,9 +78,9 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 
 	// Render template with categorized tasks
 	data := models.PageData{
-		Todo:       toDo,
-		InProgress: inProgress,
-		Complete:   completed,
+		Todo:       *toDo,
+		InProgress: *inProgress,
+		Complete:   *completed,
 		CSRFtoken:  csrfToken,
 		IsLoggedIn: loggedIN,
 	}
@@ -110,7 +120,7 @@ func AddTaskHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, re
 		}
 
 		// Save the task to the database
-		utils.SaveToDatabase(task, db, r, redisClient)
+		utils.SaveToDatabase(task, db, w, r, redisClient)
 
 		w.Header().Set("HX-Redirect", "/")
 		w.WriteHeader(http.StatusOK)
