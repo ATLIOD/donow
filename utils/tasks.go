@@ -18,6 +18,8 @@ func SaveToDatabase(t models.Task, db *pgxpool.Pool, w http.ResponseWriter, r *h
 	var userID string
 	var err error
 	var st *http.Cookie
+	var sessionToken string // Store the token value
+
 	if !CookieExists(r, "session_token") {
 		log.Println("No session found, creating temporary user")
 		userID, err = CreateTemporaryUser(w, r, db, client)
@@ -25,15 +27,24 @@ func SaveToDatabase(t models.Task, db *pgxpool.Pool, w http.ResponseWriter, r *h
 			log.Println("Error creating temporary user:", err)
 			return fmt.Errorf("failed to create session: %w", err)
 		}
+		sessionToken = "" // Indicate no session token
 	} else {
 		// get session from token
 		st, err = r.Cookie("session_token")
-		if err != nil || st.Value == "" {
+		if err != nil {
+			log.Println("Error getting cookie:", err)
 			return errors.New("unable to retrieve token")
 		}
 
+		if st == nil || st.Value == "" {
+			log.Println("Session token is empty.")
+			return errors.New("empty session token")
+		}
+
+		sessionToken = st.Value
+
 		// get user id from token
-		userID, err = GetUserIDFromST(client, st.Value)
+		userID, err = GetUserIDFromST(client, sessionToken)
 		if err != nil {
 			return err
 		}
@@ -49,7 +60,10 @@ func SaveToDatabase(t models.Task, db *pgxpool.Pool, w http.ResponseWriter, r *h
 		return fmt.Errorf("failed to save task: %w", err)
 	}
 	UpdateLastActivityDB(db, userID)
-	UpdateLastActivityRedis(client, st.Value)
+
+	if sessionToken != "" {
+		UpdateLastActivityRedis(client, sessionToken)
+	}
 
 	return nil
 }

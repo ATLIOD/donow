@@ -32,6 +32,7 @@ func Timer(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 			log.Println("Error rendering template:", err)
 			http.Error(w, "Error displaying tasks", http.StatusInternalServerError)
 		}
+		return
 
 	}
 

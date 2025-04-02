@@ -61,10 +61,10 @@ func main() {
 		handlers.AddTaskHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/deleteTask/", func(w http.ResponseWriter, r *http.Request) {
-		handlers.DeleteTaskHandler(w, r, dbPool)
+		handlers.DeleteTaskHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/moveTask/", func(w http.ResponseWriter, r *http.Request) {
-		handlers.MoveTaskHandler(w, r, dbPool)
+		handlers.MoveTaskHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		handlers.LoginPageHandler(w, r, dbPool, redisPool)
@@ -79,23 +79,23 @@ func main() {
 		handlers.RegisterUserHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/logOut", func(w http.ResponseWriter, r *http.Request) {
-		handlers.LogOutHandler(w, r, dbPool, redisPool)
+		handlers.LogOutHandler(w, r, redisPool)
 	})
 
 	mux.HandleFunc("/forgot-password", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ResetPasswordRequestForm(w, r)
+		handlers.ResetPasswordRequestForm(w)
 	})
 	mux.HandleFunc("/reset-password/send-email", func(w http.ResponseWriter, r *http.Request) {
 		handlers.ResetPasswordRequestHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/forgot-password/validate-user", func(w http.ResponseWriter, r *http.Request) {
-		handlers.TemporaryLoginForm(w, r, dbPool, redisPool)
+		handlers.TemporaryLoginForm(w, r, redisPool)
 	})
 	mux.HandleFunc("/reset-password/temporary-login", func(w http.ResponseWriter, r *http.Request) {
 		handlers.TemporaryLoginHandler(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/forgot-password/change-password", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ChangePasswordForm(w, r, dbPool, redisPool)
+		handlers.ChangePasswordForm(w, r, redisPool)
 	})
 	mux.HandleFunc("/reset-password/update-password", func(w http.ResponseWriter, r *http.Request) {
 		handlers.ChangePasswordHandler(w, r, dbPool, redisPool)

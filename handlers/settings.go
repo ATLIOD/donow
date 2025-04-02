@@ -14,14 +14,27 @@ import (
 )
 
 func SettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
+	tmpl, err := template.ParseFiles("./ui/html/settings.html")
+	if err != nil {
+		http.Error(w, "Error loading template", http.StatusInternalServerError)
+		return
+	}
+
 	if !utils.CookieExists(r, "session_token") {
-		log.Println("No session found, creating temporary user")
-		_, err := utils.CreateTemporaryUser(w, r, db, redisClient)
-		if err != nil {
-			log.Println("Error creating temporary user:", err)
-			http.Error(w, "Failed to create session", http.StatusInternalServerError)
-			return
+		data := models.TimerData{
+			Study:      25,
+			ShortBreak: 5,
+			LongBreak:  10,
+			IsLoggedIn: false,
 		}
+
+		err := tmpl.Execute(w, data)
+		if err != nil {
+			log.Println("Error rendering template:", err)
+			http.Error(w, "Error displaying tasks", http.StatusInternalServerError)
+		}
+		return
+
 	}
 
 	loggedIN, err := utils.AccountExists(r, db, redisClient)
@@ -49,11 +62,6 @@ func SettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, r
 		IsLoggedIn: loggedIN,
 	}
 
-	tmpl, err := template.ParseFiles("./ui/html/settings.html")
-	if err != nil {
-		http.Error(w, "Error loading template", http.StatusInternalServerError)
-		return
-	}
 	err = tmpl.Execute(w, data)
 	if err != nil {
 		return
@@ -105,8 +113,11 @@ func UpdateSettingsHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 		fmt.Fprintf(w, "<p style='color: red;'>Error updating settings.</p>")
 		return
 	}
+
 	utils.UpdateLastActivityDB(db, userID)
-	utils.UpdateLastActivityRedis(redisClient, st.Value)
+	if st != nil {
+		utils.UpdateLastActivityRedis(redisClient, st.Value)
+	}
 
 	// Return an HTMX response (updates the #messages div)
 	fmt.Fprintf(w, "<p style='color: green;'>Settings updated successfully!</p>")
