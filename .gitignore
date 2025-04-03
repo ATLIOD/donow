@@ -9,3 +9,5 @@ Dockerfile
 *.xml
 *.XML
 *.yaml
+/.idea
+/idea
