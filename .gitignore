@@ -6,3 +6,10 @@
 Caddyfile
 docker-compose.yml
 Dockerfile
+*.xml
+*.XML
+*.yaml
+/.idea
+/idea
+/.*
+.*

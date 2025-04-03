@@ -18,14 +18,20 @@ func LoginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, 
 		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	type token struct {
+		CSRFtoken string
+	}
+
 	if !utils.CookieExists(r, "session_token") {
-		log.Println("No session found, creating temporary user")
-		_, err = utils.CreateTemporaryUser(w, r, db, redisClient)
-		if err != nil {
-			log.Println("Error creating temporary user:", err)
-			http.Error(w, "Failed to create session", http.StatusInternalServerError)
-			return
+		data := token{
+			CSRFtoken: "",
 		}
+
+		err = tmpl.Execute(w, data)
+		if err != nil {
+			http.Error(w, "Error rendering template: "+err.Error(), http.StatusInternalServerError)
+		}
+
 	}
 	// Get session token from cookie
 	st, err := r.Cookie("session_token")
@@ -42,9 +48,6 @@ func LoginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, 
 		log.Println("error occured: ", err)
 	}
 
-	type token struct {
-		CSRFtoken string
-	}
 	data := token{
 		CSRFtoken: csrfToken,
 	}
