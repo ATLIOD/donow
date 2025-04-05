@@ -12,6 +12,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// TODO: add conditional at beginning. if user is logged in, redirect to home page
 func LoginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	tmpl, err := template.ParseFiles("./ui/html/login-form.html")
 	if err != nil {
@@ -96,6 +97,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redi
 	w.WriteHeader(http.StatusOK)
 }
 
+// TODO: add conditional at beginning. if user is logged in, redirect to home page
 func SignUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
 	tmpl, err := template.ParseFiles("./ui/html/signup-form.html")
 	if err != nil {
@@ -241,6 +243,7 @@ func LogOutHandler(w http.ResponseWriter, r *http.Request, redisClient *redis.Cl
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
+// TODO: add conditional at beginning. if user is logged in, redirect to home page
 func ResetPasswordRequestForm(w http.ResponseWriter) {
 	tmpl, err := template.ParseFiles("./ui/html/reset-password-request.html")
 	if err != nil {

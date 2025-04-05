@@ -253,6 +253,7 @@ func GenerateOTP() string {
 	return GenerateToken(32)
 }
 
+// TODO: change to store otp in redis
 func SetOTP(email string, otp string, db *pgxpool.Pool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -303,6 +304,7 @@ func SendOTP(email string, otp string) error {
 	return nil
 }
 
+// TODO: change to check for otp in redis, delete if correct
 func IsTempPasswordCorrect(tempPassword string, email string, db *pgxpool.Pool) (bool, error) {
 	// query database for otp  for designated email
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -346,6 +348,7 @@ func HashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
+// TODO: add delete all user session after on password change
 func ChangePassword(email string, password string, db *pgxpool.Pool) error {
 	// hash password
 	passwordHash, err := HashPassword(password)
