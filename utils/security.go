@@ -253,24 +253,6 @@ func GenerateOTP() string {
 	return GenerateToken(32)
 }
 
-// TODO: change to store otp in redis
-func SetOTP(email string, otp string, db *pgxpool.Pool) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// execute query to set otp for email in datbase
-	stmt := "UPDATE users SET one_time_password = $1 WHERE email = $2 RETURNING id;"
-
-	var updatedID string
-	err := db.QueryRow(ctx, stmt, otp, email).Scan(&updatedID)
-	if err != nil {
-		log.Printf("failed to set otp: %s", err)
-		return errors.New("unable to set otp")
-	}
-
-	return nil
-}
-
 func SendOTP(email string, otp string) error {
 	log.Println("api key: ", os.Getenv("SENDGRID_API_KEY"))
 	// Sender email
@@ -304,22 +286,13 @@ func SendOTP(email string, otp string) error {
 	return nil
 }
 
-// TODO: change to check for otp in redis, delete if correct
-func IsTempPasswordCorrect(tempPassword string, email string, db *pgxpool.Pool) (bool, error) {
-	// query database for otp  for designated email
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	var otp *string
-
-	getUserIDstmt := "SELECT one_time_password FROM users WHERE email = $1;"
-	row := db.QueryRow(ctx, getUserIDstmt, email)
-	err := row.Scan(&otp)
+func IsTempPasswordCorrect(tempPassword string, email string, client *redis.Client) (bool, error) {
+	otp, err := GetOTP(client, email)
 	if err != nil {
-		log.Printf("error getting otp from database: \nuser: %s \nerror: %s", email, err)
-		return false, errors.New("unable to retrieve otp")
-	}
+		log.Printf("err checking for ot : %s", email)
+		return false, errors.New("error gettin otp in redis")
 
+	}
 	// if null valeu retrieved from datavase for otp
 	if otp == nil {
 		log.Printf("no OTP found for user: %s", email)
@@ -328,16 +301,14 @@ func IsTempPasswordCorrect(tempPassword string, email string, db *pgxpool.Pool) 
 
 	// compare with passed temp password
 	if tempPassword == *otp {
-		stmt := "UPDATE users SET one_time_password = NULL WHERE email = $1 RETURNING email;"
-
-		var updatedEmail string
-		err := db.QueryRow(ctx, stmt, email).Scan(&updatedEmail)
+		err = DeleteOTP(client, email)
 		if err != nil {
 			log.Println(err.Error())
-			log.Printf("failed to delete otp for user: %s", updatedEmail)
+			log.Printf("failed to delete otp for user: %s", email)
 			return false, errors.New("unable to delete otp")
 		}
 	}
+
 	// debuging
 	log.Println("reaches end of temp pass check")
 	return tempPassword == *otp, nil

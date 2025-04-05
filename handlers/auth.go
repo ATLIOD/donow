@@ -311,7 +311,7 @@ func ResetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgx
 	}
 
 	otp := utils.GenerateOTP()
-	err = utils.SetOTP(email, otp, db)
+	err = utils.StoreOTP(redisClient, email, otp)
 	if err != nil {
 		log.Println("erorr setting otp for user: ", email, " |error:", err)
 		w.Header().Set("Content-Type", "text/html")
@@ -407,7 +407,7 @@ func TemporaryLoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 	tempPassword := r.FormValue("one_time_password")
 
 	log.Println("checking if matches")
-	matches, err := utils.IsTempPasswordCorrect(tempPassword, email, db)
+	matches, err := utils.IsTempPasswordCorrect(tempPassword, email, redisClient)
 	if err != nil {
 		log.Println("user OTP is incorrect: ", email, " |error:", err)
 		if err.Error() == "invalid credentials" {
