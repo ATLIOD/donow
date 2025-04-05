@@ -12,8 +12,18 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// TODO: add conditional at beginning. if user is logged in, redirect to home page
 func LoginPageHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
+	loggedIN, err := utils.AccountExists(r, db, redisClient)
+	if err != nil {
+		log.Println("error checking if logged in: ", err)
+	}
+	if loggedIN {
+		// Successful login
+		w.Header().Set("HX-Redirect", "/")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	tmpl, err := template.ParseFiles("./ui/html/login-form.html")
 	if err != nil {
 		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
@@ -97,8 +107,18 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redi
 	w.WriteHeader(http.StatusOK)
 }
 
-// TODO: add conditional at beginning. if user is logged in, redirect to home page
 func SignUpHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
+	loggedIN, err := utils.AccountExists(r, db, redisClient)
+	if err != nil {
+		log.Println("error checking if logged in: ", err)
+	}
+	if loggedIN {
+		// Successful login
+		w.Header().Set("HX-Redirect", "/")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	tmpl, err := template.ParseFiles("./ui/html/signup-form.html")
 	if err != nil {
 		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
@@ -243,8 +263,18 @@ func LogOutHandler(w http.ResponseWriter, r *http.Request, redisClient *redis.Cl
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-// TODO: add conditional at beginning. if user is logged in, redirect to home page
-func ResetPasswordRequestForm(w http.ResponseWriter) {
+func ResetPasswordRequestForm(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient *redis.Client) {
+	loggedIN, err := utils.AccountExists(r, db, redisClient)
+	if err != nil {
+		log.Println("error checking if logged in: ", err)
+	}
+	if loggedIN {
+		// Successful login
+		w.Header().Set("HX-Redirect", "/")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	tmpl, err := template.ParseFiles("./ui/html/reset-password-request.html")
 	if err != nil {
 		http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
@@ -475,7 +505,7 @@ func ChangePasswordHandler(w http.ResponseWriter, r *http.Request, db *pgxpool.P
 		return
 	}
 
-	err = utils.ChangePassword(email, password, db)
+	err = utils.ChangePassword(email, password, db, redisClient)
 	if err != nil {
 		log.Println("erorr changing password for user: ", email, " |error:", err)
 		w.Header().Set("Content-Type", "text/html")

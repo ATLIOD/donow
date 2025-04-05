@@ -348,8 +348,7 @@ func HashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
-// TODO: add delete all user session after on password change
-func ChangePassword(email string, password string, db *pgxpool.Pool) error {
+func ChangePassword(email string, password string, db *pgxpool.Pool, client *redis.Client) error {
 	// hash password
 	passwordHash, err := HashPassword(password)
 	if err != nil {
@@ -368,6 +367,12 @@ func ChangePassword(email string, password string, db *pgxpool.Pool) error {
 		log.Printf("failed to update user password for user: %s", email)
 		return errors.New("unable to update user password")
 
+	}
+
+	err = deleteAllUserSessions(client, updatedID)
+	if err != nil {
+		log.Printf("failed to delete sessions for user: %s", email)
+		return errors.New("unable to delete user sessions")
 	}
 
 	return nil
