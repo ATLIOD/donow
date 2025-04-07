@@ -1,50 +1,59 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+  <head>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
+    <link rel="stylesheet" href="/static/css/base.css" />
+    <link rel="stylesheet" href="/static/css/login.css" />
+    <script src="https://unpkg.com/htmx.org"></script>
+    <title>do now</title>
+    <meta name="csrf-token" content="{{ .CSRFtoken }}" />
+    <script src="/static/js/csrf.js" defer></script>
+  </head>
 
-<head>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-  <link rel="stylesheet" href="/static/css/base.css">
-  <link rel="stylesheet" href="/static/css/login.css">
-  <script src="https://unpkg.com/htmx.org"></script>
-  <title>do now</title>
-  <meta name="csrf-token" content="{{ .CSRFtoken }}">
-  <script src="/static/js/csrf.js" defer></script>
-
-
-</head>
-
-<body>
-  <div class="topnav">
-    <div class="logo">
-      <a href="/"><b>do now</b></a>
-     </div>
-    <div class="links">
-      <a href="/"><i class="fa fa-tasks" style="font-size:24px"></i></a>
-      <a href="#timer"><i class="fa fa-clock-o" style="font-size:24px"></i></a>
-      <a href="#account"><i class="fa fa-user" style="font-size:24px"></i></a>
-      <a href="#settings"><i class="fa fa-gear" style="font-size:24px"></i></a>
-
+  <body>
+    <div class="topnav">
+      <div class="logo">
+        <a href="/"><b>do now</b></a>
+      </div>
+      <div class="links">
+        <a href="/"><i class="fa fa-tasks" style="font-size: 24px"></i></a>
+        <a href="/timer"
+          ><i class="fa fa-clock-o" style="font-size: 24px"></i
+        ></a>
+        <a href="/settings"
+          ><i class="fa fa-gear" style="font-size: 24px"></i
+        ></a>
+      </div>
     </div>
-  </div>
-<div class="main">
-    <form hx-post="/reset-password/temporary-login" 
-    hx-target="#error-message"
-    hx-swap="innerHTML">
-
-
-        <input type="hidden" name="email" value="{{ .Email }}">
+    <div class="main">
+      <form
+        hx-post="/reset-password/temporary-login"
+        hx-target="#error-message"
+        hx-swap="innerHTML"
+      >
+        <input type="hidden" name="email" value="{{ .Email }}" />
 
         <label for="one_time_password">verification code:</label>
-        <input type="password" placeholder="Enter your password" id="one_time_password" name="one_time_password"  required>
-
+        <input
+          type="password"
+          placeholder="Enter your password"
+          id="one_time_password"
+          name="one_time_password"
+          required
+        />
 
         <button type="submit">Verify</button>
 
-        <div id="error-message" style="color: red; margin-top: 10px;"></div>
-    </form>
+        <div id="error-message" style="color: red; margin-top: 10px"></div>
+      </form>
+    </div>
 
-</div>
-
-<h1>We have sent an email containing a code for temporary verification. Please check your spam folder as well</h1>
-
-</body>
+    <h1>
+      We have sent an email containing a code for temporary verification. Please
+      check your spam folder as well
+    </h1>
+  </body>
+</html>
