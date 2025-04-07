@@ -39,48 +39,6 @@ func OpenDB(dsn string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-// func TokenExists(sessionToken string, db *pgxpool.Pool) bool {
-// 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-// 	defer cancel()
-// 	var token string
-// 	stmt := "SELECT sessiontoken FROM users WHERE sessiontoken = $1;"
-// 	err := db.QueryRow(ctx, stmt, sessionToken).Scan(&token)
-// 	return err == nil
-// }
-
-// func GetUserIDFromToken(sessionToken string, db *pgxpool.Pool) (string, error) {
-// 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-// 	defer cancel()
-// 	var userID string
-// 	getUserIDstmt := "SELECT id FROM users WHERE sessiontoken = $1;"
-// 	row := db.QueryRow(ctx, getUserIDstmt, sessionToken)
-// 	err := row.Scan(&userID)
-// 	if err != nil {
-// 		if err == pgx.ErrNoRows {
-// 			return "", errors.New("no user found with this session token")
-// 		}
-// 		return "", fmt.Errorf("no user id found: %w", err)
-// 	}
-// 	return userID, nil
-// }
-
-// func GetCRSFFromID(userID string, db *pgxpool.Pool) (string, error) {
-// 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-// 	defer cancel()
-// 	stmt := "SELECT csrftoken FROM users WHERE id = $1;"
-// 	row := db.QueryRow(ctx, stmt, userID)
-// 	var csrfToken string
-// 	err := row.Scan(&csrfToken)
-// 	if err != nil {
-// 		if err == pgx.ErrNoRows {
-// 			return "", errors.New("no user found with this id")
-// 		}
-// 		return "", fmt.Errorf("unable to retrieve csrf token from id: %w", err)
-// 	}
-//
-// 	return csrfToken, err
-// }
-
 func AccountExists(r *http.Request, db *pgxpool.Pool, client *redis.Client) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
