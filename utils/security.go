@@ -289,18 +289,18 @@ func SendOTP(email string, otp string) error {
 func IsTempPasswordCorrect(tempPassword string, email string, client *redis.Client) (bool, error) {
 	otp, err := GetOTP(client, email)
 	if err != nil {
-		log.Printf("err checking for ot : %s", email)
-		return false, errors.New("error gettin otp in redis")
-
+		log.Printf("error checking for OTP: %s", email)
+		return false, errors.New("error getting otp in redis")
 	}
-	// if null valeu retrieved from datavase for otp
+
 	if otp == nil {
 		log.Printf("no OTP found for user: %s", email)
 		return false, errors.New("otp is null")
 	}
 
-	// compare with passed temp password
-	if tempPassword == *otp {
+	isMatch := tempPassword == *otp
+
+	if isMatch {
 		err = DeleteOTP(client, email)
 		if err != nil {
 			log.Println(err.Error())
@@ -309,9 +309,9 @@ func IsTempPasswordCorrect(tempPassword string, email string, client *redis.Clie
 		}
 	}
 
-	// debuging
-	log.Println("reaches end of temp pass check")
-	return tempPassword == *otp, nil
+	log.Println("completed temp password check")
+
+	return isMatch, nil
 }
 
 func HashPassword(password string) (string, error) {
