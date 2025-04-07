@@ -25,13 +25,6 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 	}
 
 	if !utils.CookieExists(r, "session_token") {
-		// log.Println("No session found, creating temporary user")
-		// _, err = utils.CreateTemporaryUser(w, r, db, redisClient)
-		// if err != nil {
-		// 	log.Println("Error creating temporary user:", err)
-		// 	http.Error(w, "Failed to create session", http.StatusInternalServerError)
-		// 	return
-		// }
 		data := models.PageData{
 			IsLoggedIn: false,
 		}
