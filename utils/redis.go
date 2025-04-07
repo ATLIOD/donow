@@ -250,3 +250,38 @@ func GetUserIDFromST(client *redis.Client, sessionToken string) (string, error) 
 
 	return uID, nil
 }
+
+func GetOTP(client *redis.Client, email string) (*string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var otp string
+	otp, err := client.Get(ctx, email).Result()
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve OTP: %w", err)
+	}
+
+	return &otp, nil
+}
+
+func StoreOTP(client *redis.Client, email string, otp string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := client.Set(ctx, email, otp, 10*time.Minute).Err(); err != nil {
+		return fmt.Errorf("unable to store OTP: %w", err)
+	}
+
+	return nil
+}
+
+func DeleteOTP(client *redis.Client, email string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := client.Del(ctx, email).Err(); err != nil {
+		return fmt.Errorf("unable to delete OTP: %w", err)
+	}
+
+	return nil
+}

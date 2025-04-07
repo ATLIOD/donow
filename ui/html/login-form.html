@@ -1,54 +1,74 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+  <head>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
+    <link rel="stylesheet" href="/static/css/base.css" />
+    <link rel="stylesheet" href="/static/css/login.css" />
+    <script src="https://unpkg.com/htmx.org"></script>
+    <title>do now</title>
+    <meta name="csrf-token" content="{{ .CSRFtoken }}" />
+    <script src="/static/js/csrf.js" defer></script>
+  </head>
 
-<head>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-  <link rel="stylesheet" href="/static/css/base.css">
-  <link rel="stylesheet" href="/static/css/login.css">
-  <script src="https://unpkg.com/htmx.org"></script>
-  <title>do now</title>
-  <meta name="csrf-token" content="{{ .CSRFtoken }}">
-  <script src="/static/js/csrf.js" defer></script>
-
-</head>
-
-<body>
-  <div class="topnav">
-    <div class="logo">
-      <a href="/"><b>do now</b></a>
-     </div>
-    <div class="links">
-      <a href="/"><i class="fa fa-tasks" style="font-size:24px"></i></a>
-      <a href="timer"><i class="fa fa-clock-o" style="font-size:24px"></i></a>
-      <a href="settings"><i class="fa fa-gear" style="font-size:24px"></i></a>
-
+  <body>
+    <div class="topnav">
+      <div class="logo">
+        <a href="/"><b>do now</b></a>
+      </div>
+      <div class="links">
+        <a href="/"><i class="fa fa-tasks" style="font-size: 24px"></i></a>
+        <a href="timer"
+          ><i class="fa fa-clock-o" style="font-size: 24px"></i
+        ></a>
+        <a href="settings"
+          ><i class="fa fa-gear" style="font-size: 24px"></i
+        ></a>
+      </div>
     </div>
-  </div>
-<div class="main">
-    <form hx-post="/login-submit" 
-    hx-target="#error-message"
-    hx-swap="innerHTML">
-
-        <input type="hidden" name="csrf-token" id="csrf-token">
+    <div class="main">
+      <form
+        hx-post="/login-submit"
+        hx-target="#error-message"
+        hx-swap="innerHTML"
+      >
+        <input type="hidden" name="csrf-token" id="csrf-token" />
 
         <label for="email">Email:</label>
-        <input type="text" id="email" name="email" placeholder="Enter your email" required>
+        <input
+          type="text"
+          id="email"
+          name="email"
+          placeholder="Enter your email"
+          required
+        />
 
         <label for="password">Password:</label>
-        <input type="password" placeholder="Enter your password" id="password" name="password"  required>
-
+        <input
+          type="password"
+          placeholder="Enter your password"
+          id="password"
+          name="password"
+          required
+        />
 
         <button type="submit">log in</button>
 
-        <div id="error-message" style="color: red; margin-top: 10px;"></div>
-    </form>
-</div>
-<div>
-    <a href="signUp"><i style="font-size:24px;color:blue;"></i>no account? register here </a>
-</div>
-<div>
-    <a href="forgot-password"><i style="font-size:24px;color:blue;"></i>Forgot your password? click here </a>
-</div>
-
-
-</body>
+        <div id="error-message" style="color: red; margin-top: 10px"></div>
+      </form>
+    </div>
+    <div>
+      <a href="signUp"
+        ><i style="font-size: 24px; color: blue"></i>no account? register here
+      </a>
+    </div>
+    <div>
+      <a href="forgot-password"
+        ><i style="font-size: 24px; color: blue"></i>Forgot your password? click
+        here
+      </a>
+    </div>
+  </body>
+</html>
