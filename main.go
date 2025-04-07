@@ -83,7 +83,7 @@ func main() {
 	})
 
 	mux.HandleFunc("/forgot-password", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ResetPasswordRequestForm(w)
+		handlers.ResetPasswordRequestForm(w, r, dbPool, redisPool)
 	})
 	mux.HandleFunc("/reset-password/send-email", func(w http.ResponseWriter, r *http.Request) {
 		handlers.ResetPasswordRequestHandler(w, r, dbPool, redisPool)
