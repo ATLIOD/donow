@@ -20,6 +20,7 @@ do now is a task management web app built with **Go**, **HTMX**, **AlpineJS** an
 
 - **Go**: The backend is written in Go (Golang), providing a fast and lightweight HTTP server.
 - **HTMX**: A modern framework for building dynamic user interfaces with minimal JavaScript.
+- **Redis**: Used for in memory storage of information that requires a set TTL such as user sessions and One-Time-Passwords.
 - **AlpineJS**: A lightweight JavaScript framework used for enhancing front-end interactivity in the timer.
 - **PostgreSQL**: Used for persistent data storage, including user and task information.
 - **Docker**: The app is packaged with Docker, making it easy to deploy server-side.
