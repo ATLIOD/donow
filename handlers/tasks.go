@@ -69,6 +69,19 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 		fmt.Println("error checking if logged in: ", err)
 	}
 
+	if loggedIN {
+		// Update last activity in redisClient
+		err = utils.UpdateLastActivityRedis(redisClient, st.Value)
+		if err != nil {
+			log.Println("Error updating last activity in Redis:", err)
+		}
+		// Update last activity in database
+		err = utils.UpdateLastActivityDB(db, userID)
+		if err != nil {
+			log.Println("Error updating last activity in database:", err)
+		}
+	}
+
 	// Render template with categorized tasks
 	data := models.PageData{
 		Todo:       *toDo,
