@@ -1,6 +1,6 @@
-body{
-    background-color: #f5f5f5;
-    margin: 0px;
+body {
+  background-color: #f5f5f5;
+  margin: 0px;
 }
 .topnav {
   background-color: #415a77;
@@ -32,9 +32,8 @@ body{
   display: flex;
   justify-content: center;
   align-items: center;
-
 }
-.logo{
+.logo {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -48,117 +47,117 @@ body{
   font-size: 17px;
 }
 
-.todo{
-    width: 33%;
-    border:1px solid #778da9;
-    height: 100%;
-    border-radius: 15px;
-    padding: 20px;
-    /* box-shadow: 0 10px 0px rgba(0, 0, 0, 0.1); */
-    box-shadow: rgba(50, 50, 93, 0.25) 0px 13px 10px -5px, rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
-    z-index: 100;
-
+.todo {
+  width: 33%;
+  border: 1px solid #778da9;
+  height: 100%;
+  border-radius: 15px;
+  padding: 20px;
+  /* box-shadow: 0 10px 0px rgba(0, 0, 0, 0.1); */
+  box-shadow:
+    rgba(50, 50, 93, 0.25) 0px 13px 10px -5px,
+    rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
+  z-index: 100;
 }
 
-.inProgress{
-    width: 33%;
-    border:1px solid #778da9;
-    height: 100%;
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: rgba(50, 50, 93, 0.25) 0px 13px 10px -5px, rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
-    z-index: 100;
-
+.inProgress {
+  width: 33%;
+  border: 1px solid #778da9;
+  height: 100%;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow:
+    rgba(50, 50, 93, 0.25) 0px 13px 10px -5px,
+    rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
+  z-index: 100;
 }
-.complete{
-    width: 33%;
-    border:1px solid #778da9;
-    height: 100%;
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: rgba(50, 50, 93, 0.25) 0px 13px 10px -5px, rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
-    z-index: 100;
+.complete {
+  width: 33%;
+  border: 1px solid #778da9;
+  height: 100%;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow:
+    rgba(50, 50, 93, 0.25) 0px 13px 10px -5px,
+    rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
+  z-index: 100;
 }
 
-.main{
+.main {
   display: flex;
   padding-top: 2px;
   height: 100%;
   background-color: #f5f5f5;
-
 }
 #popup {
-    display: none;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: white;
-    padding: 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
 }
 #popup:target {
-    display: block;
+  display: block;
 }
 #overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 999;
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
 }
 #popup:target + #overlay {
-    display: block;
+  display: block;
 }
 
-.category_title{
-    text-align: center
+.category_title {
+  text-align: center;
 }
 
-.task_item{
-    border-radius: 10px;
-    border:1px solid #778da9;
-    padding-top: 10px;
-    padding-bottom: 10px;
-    padding: 20px;
-    box-shadow: 0 4px 2px rgba(0, 0, 0, 0.15);
-    z-index: 200;
-    margin-bottom: 5px;
+.task_item {
+  border-radius: 10px;
+  border: 1px solid #778da9;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 2px rgba(0, 0, 0, 0.15);
+  z-index: 200;
+  margin-bottom: 5px;
 }
 
-.task_title{
-    font-size:24px;
-    padding-left: 10px;
-    text-align: center;
+.task_title {
+  font-size: 24px;
+  padding-left: 10px;
+  text-align: center;
 }
 
-.task_buttons_right{
-    float: right;
+.task_buttons_right {
+  float: right;
 }
-.task_buttons_left{
-    float: left;
+.task_buttons_left {
+  float: left;
 }
 
 ul {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-    }
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
 
 .fa {
-    font-size: 20px;
-    cursor: pointer;
-    transition: all 0.3s ease;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-button{
-    z-index: 300;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-
+button {
+  z-index: 300;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
-
-
