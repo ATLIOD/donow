@@ -3,7 +3,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/ATLIOD/donow?t=1)](https://goreportcard.com/report/github.com/ATLIOD/donow)
 
 
-do now can be found at [donow.it.com](https://www.donow.it.com)
+do now is currently is the process of being deployed at a new url
 
 do now is a task management web app built with **Go**, **HTMX**, **AlpineJS** and **PostgreSQL**, designed to help you manage your tasks efficiently through a clean and simple interface. This app focuses on providing a seamless user experience with dynamic interactions.
 
