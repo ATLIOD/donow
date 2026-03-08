@@ -310,22 +310,22 @@ func ResetPasswordRequestHandler(w http.ResponseWriter, r *http.Request, db *pgx
 		}
 	}
 
-	otp := utils.GenerateOTP()
-	err = utils.StoreOTP(redisClient, email, otp)
-	if err != nil {
-		log.Println("erorr setting otp for user: ", email, " |error:", err)
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, "internal error. please try again")
-		return
-	}
-
-	err = utils.SendOTP(email, otp)
-	if err != nil {
-		log.Println("error seding password reset email to user: ", email, " |error:", err)
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, "internal error. please try again")
-		return
-	}
+	// otp := utils.GenerateOTP()
+	// err = utils.StoreOTP(redisClient, email, otp)
+	// if err != nil {
+	// 	log.Println("erorr setting otp for user: ", email, " |error:", err)
+	// 	w.Header().Set("Content-Type", "text/html")
+	// 	fmt.Fprintf(w, "internal error. please try again")
+	// 	return
+	// }
+	//
+	// err = utils.SendOTP(email, otp)
+	// if err != nil {
+	// 	log.Println("error seding password reset email to user: ", email, " |error:", err)
+	// 	w.Header().Set("Content-Type", "text/html")
+	// 	fmt.Fprintf(w, "internal error. please try again")
+	// 	return
+	// }
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "reset_email",

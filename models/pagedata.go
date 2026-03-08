@@ -1,3 +1,4 @@
+// Package models implements the data structures used in the application.
 package models
 
 type PageData struct {
