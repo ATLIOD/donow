@@ -25,13 +25,6 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 	}
 
 	if !utils.CookieExists(r, "session_token") {
-		// log.Println("No session found, creating temporary user")
-		// _, err = utils.CreateTemporaryUser(w, r, db, redisClient)
-		// if err != nil {
-		// 	log.Println("Error creating temporary user:", err)
-		// 	http.Error(w, "Failed to create session", http.StatusInternalServerError)
-		// 	return
-		// }
 		data := models.PageData{
 			IsLoggedIn: false,
 		}
@@ -74,6 +67,19 @@ func Tasks(w http.ResponseWriter, r *http.Request, db *pgxpool.Pool, redisClient
 	loggedIN, err := utils.AccountExists(r, db, redisClient)
 	if err != nil {
 		fmt.Println("error checking if logged in: ", err)
+	}
+
+	if loggedIN {
+		// Update last activity in redisClient
+		err = utils.UpdateLastActivityRedis(redisClient, st.Value)
+		if err != nil {
+			log.Println("Error updating last activity in Redis:", err)
+		}
+		// Update last activity in database
+		err = utils.UpdateLastActivityDB(db, userID)
+		if err != nil {
+			log.Println("Error updating last activity in database:", err)
+		}
 	}
 
 	// Render template with categorized tasks

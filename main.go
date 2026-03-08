@@ -81,25 +81,25 @@ func main() {
 	mux.HandleFunc("/logOut", func(w http.ResponseWriter, r *http.Request) {
 		handlers.LogOutHandler(w, r, redisPool)
 	})
-
-	mux.HandleFunc("/forgot-password", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ResetPasswordRequestForm(w, r, dbPool, redisPool)
-	})
-	mux.HandleFunc("/reset-password/send-email", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ResetPasswordRequestHandler(w, r, dbPool, redisPool)
-	})
-	mux.HandleFunc("/forgot-password/validate-user", func(w http.ResponseWriter, r *http.Request) {
-		handlers.TemporaryLoginForm(w, r, redisPool)
-	})
-	mux.HandleFunc("/reset-password/temporary-login", func(w http.ResponseWriter, r *http.Request) {
-		handlers.TemporaryLoginHandler(w, r, dbPool, redisPool)
-	})
-	mux.HandleFunc("/forgot-password/change-password", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ChangePasswordForm(w, r, redisPool)
-	})
-	mux.HandleFunc("/reset-password/update-password", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ChangePasswordHandler(w, r, dbPool, redisPool)
-	})
+	// TODO:  Need to find new email service. sengrid no longer has a free tier
+	// mux.HandleFunc("/forgot-password", func(w http.ResponseWriter, r *http.Request) {
+	// 	handlers.ResetPasswordRequestForm(w, r, dbPool, redisPool)
+	// })
+	// mux.HandleFunc("/reset-password/send-email", func(w http.ResponseWriter, r *http.Request) {
+	// 	handlers.ResetPasswordRequestHandler(w, r, dbPool, redisPool)
+	// })
+	// mux.HandleFunc("/forgot-password/validate-user", func(w http.ResponseWriter, r *http.Request) {
+	// 	handlers.TemporaryLoginForm(w, r, redisPool)
+	// })
+	// mux.HandleFunc("/reset-password/temporary-login", func(w http.ResponseWriter, r *http.Request) {
+	// 	handlers.TemporaryLoginHandler(w, r, dbPool, redisPool)
+	// })
+	// mux.HandleFunc("/forgot-password/change-password", func(w http.ResponseWriter, r *http.Request) {
+	// 	handlers.ChangePasswordForm(w, r, redisPool)
+	// })
+	// mux.HandleFunc("/reset-password/update-password", func(w http.ResponseWriter, r *http.Request) {
+	// 	handlers.ChangePasswordHandler(w, r, dbPool, redisPool)
+	// })
 	mux.HandleFunc("/timer", func(w http.ResponseWriter, r *http.Request) {
 		handlers.Timer(w, r, dbPool, redisPool)
 	})

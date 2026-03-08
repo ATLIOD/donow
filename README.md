@@ -1,6 +1,9 @@
 # do now
 
-do now can be found at [donow.it.com](https://www.donow.it.com)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ATLIOD/donow?t=1)](https://goreportcard.com/report/github.com/ATLIOD/donow)
+
+
+do now is currently in the process of being deployed at a new url
 
 do now is a task management web app built with **Go**, **HTMX**, **AlpineJS** and **PostgreSQL**, designed to help you manage your tasks efficiently through a clean and simple interface. This app focuses on providing a seamless user experience with dynamic interactions.
 
@@ -20,6 +23,7 @@ do now is a task management web app built with **Go**, **HTMX**, **AlpineJS** an
 
 - **Go**: The backend is written in Go (Golang), providing a fast and lightweight HTTP server.
 - **HTMX**: A modern framework for building dynamic user interfaces with minimal JavaScript.
+- **Redis**: Used for in memory storage of information that requires a set TTL such as user sessions and One-Time-Passwords.
 - **AlpineJS**: A lightweight JavaScript framework used for enhancing front-end interactivity in the timer.
 - **PostgreSQL**: Used for persistent data storage, including user and task information.
 - **Docker**: The app is packaged with Docker, making it easy to deploy server-side.
