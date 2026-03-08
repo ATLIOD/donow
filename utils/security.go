@@ -9,13 +9,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"github.com/sendgrid/sendgrid-go"
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -249,42 +246,43 @@ func GenerateToken(length int) string {
 	return base64.URLEncoding.EncodeToString(bytes)
 }
 
-func GenerateOTP() string {
-	return GenerateToken(32)
-}
-
-func SendOTP(email string, otp string) error {
-	log.Println("api key: ", os.Getenv("SENDGRID_API_KEY"))
-	// Sender email
-	from := mail.NewEmail("Donow Support", "donotreply@donow.it.com")
-	subject := "Password Reset Code"
-
-	// Recipient email
-	to := mail.NewEmail("", email)
-
-	// OTP Message
-	plainTextContent := fmt.Sprintf("Your password reset code is: %s", otp)
-	htmlContent := fmt.Sprintf("<strong>Your passwod reset code is: %s</strong>", otp)
-
-	// Create email message
-	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
-
-	// SendGrid client
-	client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
-	response, err := client.Send(message)
-
-	if err != nil {
-		log.Println("Error sending email:", err)
-		return err
-	} else {
-		fmt.Println("Status Code:", response.StatusCode)
-		fmt.Println("Response Body:", response.Body)
-		fmt.Println("Response Headers:", response.Headers)
-	}
-
-	log.Println("OTP email sent successfully to user: ", email)
-	return nil
-}
+//NOTE: no more sendgrid
+// func GenerateOTP() string {
+// 	return GenerateToken(32)
+// }
+//
+// func SendOTP(email string, otp string) error {
+// 	log.Println("api key: ", os.Getenv("SENDGRID_API_KEY"))
+// 	// Sender email
+// 	from := mail.NewEmail("Donow Support", "donotreply@donow.it.com")
+// 	subject := "Password Reset Code"
+//
+// 	// Recipient email
+// 	to := mail.NewEmail("", email)
+//
+// 	// OTP Message
+// 	plainTextContent := fmt.Sprintf("Your password reset code is: %s", otp)
+// 	htmlContent := fmt.Sprintf("<strong>Your passwod reset code is: %s</strong>", otp)
+//
+// 	// Create email message
+// 	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
+//
+// 	// SendGrid client
+// 	client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
+// 	response, err := client.Send(message)
+//
+// 	if err != nil {
+// 		log.Println("Error sending email:", err)
+// 		return err
+// 	} else {
+// 		fmt.Println("Status Code:", response.StatusCode)
+// 		fmt.Println("Response Body:", response.Body)
+// 		fmt.Println("Response Headers:", response.Headers)
+// 	}
+//
+// 	log.Println("OTP email sent successfully to user: ", email)
+// 	return nil
+// }
 
 func IsTempPasswordCorrect(tempPassword string, email string, client *redis.Client) (bool, error) {
 	otp, err := GetOTP(client, email)
