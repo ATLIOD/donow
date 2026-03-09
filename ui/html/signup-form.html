@@ -1,49 +1,69 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+  <head>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
+    <link rel="stylesheet" href="/static/css/base.css" />
+    <link rel="stylesheet" href="/static/css/login.css" />
+    <script src="https://unpkg.com/htmx.org"></script>
+    <title>do now</title>
+    <meta name="csrf-token" content="{{ .CSRFtoken }}" />
+    <script src="/static/js/csrf.js" defer></script>
+  </head>
 
-<head>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-  <link rel="stylesheet" href="/static/css/base.css">
-  <link rel="stylesheet" href="/static/css/login.css">
-  <script src="https://unpkg.com/htmx.org"></script>
-  <title>do now</title>
-  <meta name="csrf-token" content="{{ .CSRFtoken }}">
-  <script src="/static/js/csrf.js" defer></script>
-
-</head>
-
-<body>
-  <div class="topnav">
-    <div class="logo">
-      <a href="/"><b>do now</b></a>
-     </div>
-    <div class="links">
-      <a href="/"><i class="fa fa-tasks" style="font-size:24px"></i></a>
-
+  <body>
+    <div class="topnav">
+      <div class="logo">
+        <a href="/"><b>do now</b></a>
+      </div>
+      <div class="links">
+        <a href="/"><i class="fa fa-tasks" style="font-size: 24px"></i></a>
+      </div>
     </div>
-  </div>
-<div class="main">
-    <form hx-post="/register" 
-    hx-target="#error-message" 
-    hx-swap="innerHTML">
-
-        <input type="hidden" name="csrf-token" id="csrf-token">
+    <div class="main">
+      <form hx-post="/register" hx-target="#error-message" hx-swap="innerHTML">
+        <input type="hidden" name="csrf-token" id="csrf-token" />
 
         <label for="email">Email:</label>
-        <input type="text" id="email" name="email" placeholder="Enter your email" required>
+        <input
+          type="text"
+          id="email"
+          name="email"
+          placeholder="Enter your email"
+          required
+        />
 
         <label for="password">Password:</label>
-        <input type="password" placeholder="Enter a password" id="password" name="password" required>
+        <input
+          type="password"
+          placeholder="Enter a password"
+          id="password"
+          name="password"
+          required
+        />
 
         <label for="confirm-password">Confirm Password:</label>
-        <input type="password" placeholder="Confirm Password" id="confirm-password" name="confirm-password" placeholder="Confirm password" required>
+        <input
+          type="password"
+          placeholder="Confirm Password"
+          id="confirm-password"
+          name="confirm-password"
+          placeholder="Confirm password"
+          required
+        />
 
         <button type="submit">register</button>
 
-        <div id="error-message" style="color: red; margin-top: 10px;"></div>
-    </form>
-</div>
-<div>
-    <a href="login"><i style="font-size:24px;color:blue;"></i>already have an account? log in here </a>
-</div>
-</body>
+        <div id="error-message" style="color: red; margin-top: 10px"></div>
+      </form>
+    </div>
+    <div>
+      <a class="navlink" href="login"
+        ><i style="font-size: 24px; color: blue"></i>already have an account?
+        log in here
+      </a>
+    </div>
+  </body>
+</html>
