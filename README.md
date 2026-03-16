@@ -31,7 +31,7 @@ do now is a task management web app built with **Go**, **HTMX**, **AlpineJS** an
 
 ## Accessing the Website
 
-Since this is a web app, you don't need to install anything on your local machine to use it. Once deployed, you can simply visit the URL at [donow.atliod.com](https://www.donow.atliod.com)
+Since this is a web app, you don't need to install anything on your local machine to use it. You can simply visit the URL at [donow.atliod.com](https://www.donow.atliod.com)
 
 ## License
 
